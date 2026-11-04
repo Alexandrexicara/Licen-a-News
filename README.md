@@ -118,3 +118,4 @@ Frontend: servir a pasta `frontend` com um servidor estático local. O proxy de 
 
 - [Rotas e contratos da API](docs/API.md)
 - [Controle da importação do protótipo original](docs/IMPORT_STATUS.md)
+- [Assistente virtual NVIDIA + ElevenLabs](docs/ASSISTENTE_VIRTUAL.md)
