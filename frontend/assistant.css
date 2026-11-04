@@ -27,3 +27,6 @@
 @keyframes ln-arm-talk-right{from{transform:rotate(25deg) translateY(-8px)}to{transform:rotate(-25deg) translateY(2px)}}
 @keyframes ln-mouth-talk{from{transform:scaleY(.55)}to{transform:scaleY(1.8)}}
 @keyframes ln-eye-listen{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* A conversa por voz precisa mostrar a apresentação e o histórico da Bia. */
+.ln-chat-messages{display:flex!important;}
