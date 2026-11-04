@@ -3,3 +3,9 @@
 .ln-chat-note{line-height:1.5;padding:8px 13px 11px}
 .ln-chat-head small{display:block}
 .ln-assistant-panel{z-index:2}
+
+/* Interface exclusivamente por voz: sem transcrição, campo de texto ou botão Enviar. */
+.ln-chat-messages,.ln-chat-compose,.ln-chat-note{display:none!important}
+.ln-assistant-panel[hidden]{display:none!important}
+.ln-assistant-bubble{min-width:180px;text-align:left}
+.ln-assistant-bubble span{display:block}
