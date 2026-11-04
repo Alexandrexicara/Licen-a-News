@@ -7,3 +7,17 @@ export function getPool(){
   return pool;
 }
 export async function query(sql,params=[]){return getPool().query(sql,params);}
+export async function transaction(work){
+  const client=await getPool().connect();
+  try{
+    await client.query("BEGIN");
+    const result=await work(client);
+    await client.query("COMMIT");
+    return result;
+  }catch(error){
+    await client.query("ROLLBACK");
+    throw error;
+  }finally{
+    client.release();
+  }
+}
