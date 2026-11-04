@@ -9,3 +9,21 @@
 .ln-assistant-panel[hidden]{display:none!important}
 .ln-assistant-bubble{min-width:180px;text-align:left}
 .ln-assistant-bubble span{display:block}
+
+/* Estados visuais e gestos do robô Bia */
+.ln-assistant .ln-arm{transform-box:fill-box;transform-origin:center;transition:transform .25s ease}
+.ln-assistant.listening .ln-arm-left{animation:ln-arm-listen 1.1s ease-in-out infinite alternate}
+.ln-assistant.listening .ln-arm-right{animation:ln-arm-listen 1.1s ease-in-out infinite alternate-reverse}
+.ln-assistant.speaking .ln-arm-left{animation:ln-arm-talk-left .72s ease-in-out infinite alternate}
+.ln-assistant.speaking .ln-arm-right{animation:ln-arm-talk-right .72s ease-in-out infinite alternate}
+.ln-assistant.thinking .ln-arm-left{transform:rotate(-24deg) translateY(-4px)}
+.ln-assistant.thinking .ln-arm-right{transform:rotate(24deg) translateY(-4px)}
+.ln-assistant.sleeping .ln-arm-left{transform:rotate(16deg) translateY(3px)}
+.ln-assistant.sleeping .ln-arm-right{transform:rotate(-16deg) translateY(3px)}
+.ln-assistant.speaking .ln-mouth{animation:ln-mouth-talk .22s ease-in-out infinite alternate;transform-origin:center}
+.ln-assistant.listening .ln-eye{animation:ln-eye-listen 1.8s ease-in-out infinite}
+@keyframes ln-arm-listen{from{transform:rotate(-10deg)}to{transform:rotate(12deg) translateY(-3px)}}
+@keyframes ln-arm-talk-left{from{transform:rotate(-28deg) translateY(-2px)}to{transform:rotate(25deg) translateY(-9px)}}
+@keyframes ln-arm-talk-right{from{transform:rotate(25deg) translateY(-8px)}to{transform:rotate(-25deg) translateY(2px)}}
+@keyframes ln-mouth-talk{from{transform:scaleY(.55)}to{transform:scaleY(1.8)}}
+@keyframes ln-eye-listen{0%,100%{opacity:1}50%{opacity:.55}}
