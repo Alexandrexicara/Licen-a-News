@@ -24,7 +24,9 @@ export async function saveWooviAccount(userId, appId, hmacSecret, webhookToken) 
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),now())
     ON CONFLICT(user_id) DO UPDATE SET app_id_encrypted=EXCLUDED.app_id_encrypted,app_id_iv=EXCLUDED.app_id_iv,app_id_tag=EXCLUDED.app_id_tag,
     app_id_hint=EXCLUDED.app_id_hint,webhook_hmac_encrypted=EXCLUDED.webhook_hmac_encrypted,webhook_hmac_iv=EXCLUDED.webhook_hmac_iv,
-    webhook_hmac_tag=EXCLUDED.webhook_hmac_tag,webhook_token_hash=EXCLUDED.webhook_token_hash,connected_at=now(),updated_at=now()`,
+    webhook_hmac_tag=EXCLUDED.webhook_hmac_tag,webhook_token_hash=EXCLUDED.webhook_token_hash,connected_at=now(),
+    consented_at=NULL,consent_version=NULL,consent_destination_hint=NULL,payout_permission_status='pending',
+    payout_permission_verified_at=NULL,payout_test_correlation_id=NULL,payout_test_confirmed_at=NULL,updated_at=now()`,
     [userId,a.encrypted,a.iv,a.tag,String(appId).slice(-4),h.encrypted,h.iv,h.tag,createHash("sha256").update(webhookToken).digest("hex")]);
 }
 export async function getWooviAccount(userId) {
