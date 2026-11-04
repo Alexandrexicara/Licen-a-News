@@ -133,6 +133,6 @@ app.post("/api/v1/developer/api-keys",authRequired,asyncRoute(async(req,res)=>{
  await query("INSERT INTO api_credentials(user_id,label,key_hash) VALUES($1,$2,$3)",[req.user.sub,req.body?.label||"Chave API",hash]);
  res.status(201).json({key,warning:"Copie agora. A chave completa não será exibida novamente."});
 }));
-app.use((err,req,res,next)=>{console.error(err);res.status(500).json({error:"Erro interno do servidor"});});
+app.use((err,req,res,next)=>{console.error(err);const status=Number.isInteger(err?.status)&&err.status>=400&&err.status<600?err.status:500;res.status(status).json({error:status===500?"Erro interno do servidor":err.message||"Solicitação inválida"});});
 const port=process.env.PORT||4000;
 app.listen(port,"0.0.0.0",()=>console.log("Licença News API ouvindo na porta "+port));
