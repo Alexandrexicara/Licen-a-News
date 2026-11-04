@@ -27,6 +27,32 @@ async function registerAccountWebhook(appId,userId,token,event) {
 router.get("/me",authRequired,asyncRoute(async(req,res)=>{
   res.json(await getWooviAccountStatus(req.user.sub));
 }));
+router.post("/me/authorization",authRequired,asyncRoute(async(req,res)=>{
+  if(req.body?.accepted!==true) return res.status(400).json({error:"É necessário aceitar expressamente a autorização da comissão."});
+  const account=await getWooviAccount(req.user.sub);
+  if(!account) return res.status(409).json({error:"Conecte primeiro sua conta Woovi."});
+  const version="licenca-news-commission-15-v1";
+  const hint=String(process.env.WOOVI_PLATFORM_PIX_KEY||"").replace(/^(.{2}).+(@.+)$/,"$1••••$2");
+  await query("UPDATE user_woovi_accounts SET consented_at=now(),consent_version=$2,consent_destination_hint=$3,payout_permission_status='pending',payout_permission_verified_at=NULL,updated_at=now() WHERE user_id=$1",[req.user.sub,version,hint]);
+  await query("INSERT INTO woovi_authorization_audit(user_id,action,consent_version,destination_hint,details) VALUES($1,'commission_consent_accepted',$2,$3,$4::jsonb)",[req.user.sub,version,hint,JSON.stringify({commissionPercent:15,accepted:true})]);
+  res.json({consented:true,commissionPercent:15,payoutPermissionStatus:"pending",message:"Autorização registrada. Falta comprovar a permissão Pix Out da Woovi."});
+}));
+router.post("/me/verify-payout",authRequired,asyncRoute(async(req,res)=>{
+  if(req.body?.confirmTestTransfer!==true) return res.status(400).json({error:"Confirme expressamente o envio de um Pix real de R$ 0,01 para validar a permissão."});
+  const state=await query("SELECT consented_at,payout_permission_status FROM user_woovi_accounts WHERE user_id=$1",[req.user.sub]);
+  if(!state.rowCount||!state.rows[0].consented_at) return res.status(409).json({error:"Registre primeiro sua autorização da comissão de 15%."});
+  const account=await getWooviAccount(req.user.sub);
+  const pixKey=String(process.env.WOOVI_PLATFORM_PIX_KEY||"").trim();
+  const pixKeyType=String(process.env.WOOVI_PLATFORM_PIX_KEY_TYPE||"").trim().toUpperCase();
+  if(!pixKey||!["CPF","CNPJ","EMAIL","PHONE","RANDOM"].includes(pixKeyType)) return res.status(503).json({error:"Chave Pix de destino não configurada."});
+  const correlationID="ln-validacao-"+req.user.sub+"-"+randomUUID();
+  const result=await wooviRequest(account.appId,"/api/v1/payment",{type:"PIX_KEY",value:1,correlationID,destinationAlias:pixKey,destinationAliasType:pixKeyType,comment:"Validacao de permissao Pix Out - Licenca News",autoApprove:true});
+  const status=String(result?.payment?.status||"").toUpperCase();
+  if(!["APPROVED","CONFIRMED"].includes(status)) return res.status(409).json({error:"A Woovi não aprovou o Pix de validação.",providerStatus:status||"unknown"});
+  await query("UPDATE user_woovi_accounts SET payout_test_correlation_id=$2,payout_permission_status='testing',updated_at=now() WHERE user_id=$1",[req.user.sub,correlationID]);
+  await query("INSERT INTO woovi_authorization_audit(user_id,action,consent_version,destination_hint,details) VALUES($1,'pix_out_test_requested',$2,$3,$4::jsonb)",[req.user.sub,"licenca-news-commission-15-v1",String(process.env.WOOVI_PLATFORM_PIX_KEY||"").slice(-4),JSON.stringify({correlationID,valueCents:1,status})]);
+  res.status(202).json({testRequested:true,status:"testing",message:"Pix de R$ 0,01 solicitado. A liberação ocorrerá somente após a confirmação do webhook da Woovi."});
+}));
 router.post("/me",authRequired,asyncRoute(async(req,res)=>{
   const appId=String(req.body?.appId||"").trim();
   if(!appId||appId.length>512)return res.status(400).json({error:"Informe o AppID da sua conta Woovi."});
@@ -117,6 +143,19 @@ webhooks.post("/:userId/:token",asyncRoute(async(req,res)=>{
     VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(user_id,event_type,correlation_id) DO NOTHING RETURNING id`,
     [req.params.userId,event,correlationID,JSON.stringify(req.body||{})]);
   if(!inserted.rowCount)return res.status(200).json({received:true,duplicate:true});
+
+  if(event==="OPENPIX:MOVEMENT_CONFIRMED" || event==="OPENPIX:MOVEMENT_FAILED") {
+    const test=await query("SELECT payout_test_correlation_id FROM user_woovi_accounts WHERE user_id=$1",[req.params.userId]);
+    if(test.rowCount && test.rows[0].payout_test_correlation_id===correlationID) {
+      if(event==="OPENPIX:MOVEMENT_CONFIRMED") {
+        await query("UPDATE user_woovi_accounts SET payout_permission_status='verified',payout_permission_verified_at=now(),payout_test_confirmed_at=now(),updated_at=now() WHERE user_id=$1",[req.params.userId]);
+        await query("INSERT INTO woovi_authorization_audit(user_id,action,consent_version,destination_hint,details) VALUES($1,'pix_out_permission_verified',$2,$3,$4::jsonb)",[req.params.userId,"licenca-news-commission-15-v1",String(process.env.WOOVI_PLATFORM_PIX_KEY||"").slice(-4),JSON.stringify({correlationID})]);
+      } else {
+        await query("UPDATE user_woovi_accounts SET payout_permission_status='failed',updated_at=now() WHERE user_id=$1",[req.params.userId]);
+      }
+      return res.status(200).json({received:true,permissionTest:true});
+    }
+  }
 
   if(chargeEvent) {
     const charge=req.body.charge||{};
