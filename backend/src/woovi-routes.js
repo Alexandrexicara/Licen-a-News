@@ -41,6 +41,8 @@ router.post("/me/verify-payout",authRequired,asyncRoute(async(req,res)=>{
   if(req.body?.confirmTestTransfer!==true) return res.status(400).json({error:"Confirme expressamente o envio de um Pix real de R$ 0,01 para validar a permissão."});
   const state=await query("SELECT consented_at,payout_permission_status FROM user_woovi_accounts WHERE user_id=$1",[req.user.sub]);
   if(!state.rowCount||!state.rows[0].consented_at) return res.status(409).json({error:"Registre primeiro sua autorização da comissão de 15%."});
+  if(state.rows[0].payout_permission_status==="verified") return res.status(409).json({error:"A permissão Pix Out desta conta já foi verificada."});
+  if(state.rows[0].payout_permission_status==="testing") return res.status(409).json({error:"O teste Pix Out já está aguardando confirmação da Woovi."});
   const account=await getWooviAccount(req.user.sub);
   const pixKey=String(process.env.WOOVI_PLATFORM_PIX_KEY||"").trim();
   const pixKeyType=String(process.env.WOOVI_PLATFORM_PIX_KEY_TYPE||"").trim().toUpperCase();
