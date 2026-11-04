@@ -112,3 +112,9 @@ Frontend: servir a pasta `frontend` com um servidor estático local. O proxy de 
 - Revisão editorial usa endpoints administrativos; a criação inicial do primeiro administrador deve ser feita por procedimento seguro no banco.
 - Nenhuma cobrança, split ou transferência Pix está habilitada.
 - Não declarar produção pronta antes de aplicar a migração 0002, configurar segredos, executar testes automatizados e validar os fluxos completos.
+
+
+## Documentação adicional
+
+- [Rotas e contratos da API](docs/API.md)
+- [Controle da importação do protótipo original](docs/IMPORT_STATUS.md)
