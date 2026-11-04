@@ -4,7 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import bcrypt from "bcryptjs";
 import { randomBytes,createHash,randomUUID } from "node:crypto";
-import { query } from "./db.js";
+import { query,transaction } from "./db.js";
 import { authRequired,adminRequired,signToken } from "./auth.js";
 
 const app=express();
@@ -18,13 +18,16 @@ app.get("/api/v1/info",(req,res)=>res.json({name:"Licença News API",version:"1.
 
 app.post("/api/v1/auth/register",asyncRoute(async(req,res)=>{
  const {name,email,password,accountType="journalist",organizationName="",websiteUrl="",contactPhone=""}=req.body||{};
- if(!name||!email||!password||password.length<10)return res.status(400).json({error:"Informe nome, e-mail e senha com pelo menos 10 caracteres"});
+ const normalizedEmail=String(email||"").trim().toLowerCase();
+ if(!String(name||"").trim()||!/^\S+@\S+\.\S+$/.test(normalizedEmail)||typeof password!=="string"||password.length<10)return res.status(400).json({error:"Informe nome, e-mail válido e senha com pelo menos 10 caracteres"});
  if(!["journalist","publisher","influencer","buyer","both"].includes(accountType))return res.status(400).json({error:"Tipo de conta inválido"});
  const hash=await bcrypt.hash(password,12);
  const id=randomUUID();
- const result=await query("INSERT INTO app_users(id,name,email,password_hash,role) VALUES($1,$2,lower($3),$4,'user') RETURNING id,name,email,role",[id,name,email,hash]);
- await query("INSERT INTO publisher_profiles(user_id,account_type,organization_name,website_url,contact_phone) VALUES($1,$2,$3,$4,$5)",[id,accountType,organizationName,websiteUrl,contactPhone]);
- const user={...result.rows[0],account_type:accountType};
+ const user=await transaction(async client=>{
+  const result=await client.query("INSERT INTO app_users(id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'user') RETURNING id,name,email,role",[id,String(name).trim(),normalizedEmail,hash]);
+  await client.query("INSERT INTO publisher_profiles(user_id,account_type,organization_name,website_url,contact_phone) VALUES($1,$2,$3,$4,$5)",[id,accountType,organizationName,websiteUrl,contactPhone]);
+  return {...result.rows[0],account_type:accountType};
+ });
  res.status(201).json({user:cleanUser(user),token:signToken(user)});
 }));
 app.post("/api/v1/auth/login",asyncRoute(async(req,res)=>{
