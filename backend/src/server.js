@@ -16,7 +16,7 @@ app.use("/api/v1/assistant",assistantRouter);
 const asyncRoute=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
 const cleanUser=r=>({id:r.id,email:r.email,name:r.name,role:r.role,accountType:r.account_type});
 app.get("/health",(req,res)=>res.json({status:"ok",service:"licenca-news-api"}));
-app.get("/api/v1/info",(req,res)=>res.json({name:"Licença News API",version:"1.0.0",payments:"disabled"}));
+app.get("/api/v1/info",(req,res)=>res.json({name:"Licença News API",version:"1.0.0",payments:"external_between_parties",licensing:"direct_authorization",licenseIssuance:"publisher_confirmation"}));
 
 app.post("/api/v1/auth/register",asyncRoute(async(req,res)=>{
  const {name,email,password,accountType="journalist",organizationName="",websiteUrl="",contactPhone=""}=req.body||{};
