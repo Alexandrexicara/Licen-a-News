@@ -96,14 +96,14 @@ app.post("/api/v1/content/:id/offers",authRequired,asyncRoute(async(req,res)=>{
  res.status(201).json({offer:r.rows[0]});
 }));
 app.get("/api/v1/offers",asyncRoute(async(req,res)=>{
- const r=await query("SELECT o.*,c.title,c.content_type,c.summary,c.asset_url FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.active=true AND c.status='approved' ORDER BY o.created_at DESC LIMIT 100");
+ const r=await query("SELECT o.*,c.title,c.content_type,c.summary,c.asset_url FROM license_offers o JOIN content_items c ON c.id=o.content_id JOIN user_woovi_accounts wa ON wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL WHERE o.active=true AND c.status='approved' ORDER BY o.created_at DESC LIMIT 100");
  res.json({offers:r.rows});
 }));
 app.post("/api/v1/licenses/request",authRequired,asyncRoute(async(req,res)=>{
  const {offerId,requestMessage="",termsAccepted}=req.body||{};
  if(!offerId||termsAccepted!==true)return res.status(400).json({error:"Informe a oferta e aceite expressamente os termos."});
  const order=await transaction(async client=>{
-  const offer=await client.query("SELECT o.*,c.title,c.status AS content_status FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.id=$1 AND o.active=true FOR UPDATE OF o",[offerId]);
+  const offer=await client.query("SELECT o.*,c.title,c.status AS content_status FROM license_offers o JOIN content_items c ON c.id=o.content_id JOIN user_woovi_accounts wa ON wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL WHERE o.id=$1 AND o.active=true FOR UPDATE OF o",[offerId]);
   if(!offer.rowCount||offer.rows[0].content_status!=="approved")throw Object.assign(new Error("Oferta indisponível."),{status:404});
   const o=offer.rows[0];
   if(o.owner_user_id===req.user.sub)throw Object.assign(new Error("Você não pode solicitar licença do seu próprio conteúdo."),{status:400});
