@@ -1,5 +1,10 @@
 import jwt from "jsonwebtoken";
 export function signToken(user){return jwt.sign({sub:user.id,email:user.email,role:user.role},process.env.JWT_SECRET,{expiresIn:"7d"});}
+export function optionalAuth(req,res,next){
+  const token=(req.headers.authorization||"").replace(/^Bearer\\s+/i,"");
+  if(token){try{req.user=jwt.verify(token,process.env.JWT_SECRET);}catch{req.user=null;}}
+  next();
+}
 export function authRequired(req,res,next){
   const token=(req.headers.authorization||"").replace(/^Bearer\s+/i,"");
   if(!token) return res.status(401).json({error:"Autenticação necessária"});
