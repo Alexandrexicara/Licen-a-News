@@ -82,6 +82,8 @@ router.post("/licenses/:id/payment",authRequired,asyncRoute(async(req,res)=>{
   if(order.woovi_charge_correlation_id) {
     return res.json({payment:{correlationID:order.woovi_charge_correlation_id,brCode:order.woovi_br_code,paymentLinkUrl:order.woovi_payment_link_url,status:"ACTIVE"}});
   }
+  const authorization=await query("SELECT consented_at,payout_permission_status,payout_permission_verified_at FROM user_woovi_accounts WHERE user_id=$1",[order.publisher_user_id]);
+  if(!authorization.rowCount||!authorization.rows[0].consented_at||authorization.rows[0].payout_permission_status!=="verified"||!authorization.rows[0].payout_permission_verified_at)return res.status(409).json({error:"O titular ainda não autorizou a comissão ou não comprovou a permissão Pix Out."});
   const account=await getWooviAccount(order.publisher_user_id);
   if(!account)return res.status(409).json({error:"O titular ainda não conectou sua conta Woovi."});
   const correlationID=randomUUID();
@@ -184,6 +186,7 @@ webhooks.post("/:userId/:token",asyncRoute(async(req,res)=>{
       } catch(error) {
         await query("UPDATE woovi_payouts SET status='needs_attention',error_message=$2,updated_at=now() WHERE order_id=$1",
           [paid.id,String(error.message||"Falha no Pix Out").slice(0,500)]);
+        await query("UPDATE user_woovi_accounts SET payout_permission_status='needs_attention',updated_at=now() WHERE user_id=$1",[req.params.userId]);
       }
     }
   } else if(event==="OPENPIX:MOVEMENT_CONFIRMED" || event==="OPENPIX:MOVEMENT_FAILED") {
