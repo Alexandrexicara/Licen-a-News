@@ -114,7 +114,7 @@ app.post("/api/v1/licenses/request",authRequired,asyncRoute(async(req,res)=>{
  res.status(201).json({order,payments:"external_between_parties",message:"Solicitação enviada ao titular. A negociação e qualquer pagamento acontecem diretamente entre as partes, fora do Licença News."});
 }));
 app.get("/api/v1/licenses/mine",authRequired,asyncRoute(async(req,res)=>{
- const r=await query("SELECT o.*,c.title,l.license_code,l.status AS license_status,l.starts_at,l.expires_at,(o.publisher_user_id=$1) AS can_respond FROM license_orders o JOIN license_offers f ON f.id=o.offer_id JOIN content_items c ON c.id=f.content_id LEFT JOIN issued_licenses l ON l.order_id=o.id WHERE o.buyer_user_id=$1 OR o.publisher_user_id=$1 ORDER BY o.created_at DESC",[req.user.sub]);
+ const r=await query("SELECT o.*,c.title,l.license_code,l.status AS license_status,l.starts_at,l.expires_at,(o.publisher_user_id=$1) AS can_respond,(o.buyer_user_id=$1) AS can_pay FROM license_orders o JOIN license_offers f ON f.id=o.offer_id JOIN content_items c ON c.id=f.content_id LEFT JOIN issued_licenses l ON l.order_id=o.id WHERE o.buyer_user_id=$1 OR o.publisher_user_id=$1 ORDER BY o.created_at DESC",[req.user.sub]);
  res.json({orders:r.rows});
 }));
 app.patch("/api/v1/licenses/:id/respond",authRequired,asyncRoute(async(req,res)=>{
