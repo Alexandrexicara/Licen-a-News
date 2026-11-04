@@ -5,14 +5,15 @@ import helmet from "helmet";
 import bcrypt from "bcryptjs";
 import { randomBytes,createHash,randomUUID } from "node:crypto";
 import { query,transaction } from "./db.js";
-import { authRequired,adminRequired,signToken } from "./auth.js";
+import { authRequired,adminRequired,signToken,optionalAuth } from "./auth.js";
+import { saveElevenLabsKey,getElevenLabsKeyStatus,removeElevenLabsKey } from "./user-keys.js";
 import assistantRouter from "./assistant.js";
 
 const app=express();
 app.use(helmet());
 app.use(cors({origin:(process.env.CORS_ORIGIN||"").split(",").filter(Boolean),credentials:true}));
 app.use(express.json({limit:"2mb"}));
-app.use("/api/v1/assistant",assistantRouter);
+app.use("/api/v1/assistant",optionalAuth,assistantRouter);
 const asyncRoute=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
 const cleanUser=r=>({id:r.id,email:r.email,name:r.name,role:r.role,accountType:r.account_type});
 app.get("/health",(req,res)=>res.json({status:"ok",service:"licenca-news-api"}));
@@ -42,6 +43,25 @@ app.get("/api/v1/me",authRequired,asyncRoute(async(req,res)=>{
  const r=await query("SELECT u.id,u.name,u.email,u.role,p.account_type,p.organization_name,p.website_url,p.contact_phone,p.verification_status,p.rights_declaration FROM app_users u LEFT JOIN publisher_profiles p ON p.user_id=u.id WHERE u.id=$1",[req.user.sub]);
  if(!r.rowCount)return res.status(404).json({error:"Usuário não encontrado"});
  res.json({user:r.rows[0]});
+}));
+app.get("/api/v1/me/elevenlabs",authRequired,asyncRoute(async(req,res)=>{
+ res.json(await getElevenLabsKeyStatus(req.user.sub));
+}));
+app.post("/api/v1/me/elevenlabs",authRequired,asyncRoute(async(req,res)=>{
+ const key=String(req.body?.apiKey||"").trim();
+ if(!key||key.length>512)return res.status(400).json({error:"Cole uma chave API válida da ElevenLabs."});
+ const check=await fetch("https://api.elevenlabs.io/v1/user",{headers:{"xi-api-key":key,"Accept":"application/json"},signal:AbortSignal.timeout(15000)});
+ if(!check.ok){
+  const details=await check.json().catch(()=>({}));
+  console.warn("ElevenLabs user key validation rejected",check.status);
+  return res.status(400).json({error:check.status===401||check.status===403?"A ElevenLabs recusou essa chave. Confira se ela está correta e ativa.":"Não foi possível validar a chave na ElevenLabs agora.",provider_status:check.status});
+ }
+ await saveElevenLabsKey(req.user.sub,key);
+ res.json({connected:true,message:"Chave ElevenLabs validada e vinculada somente à sua conta.",...(await getElevenLabsKeyStatus(req.user.sub))});
+}));
+app.delete("/api/v1/me/elevenlabs",authRequired,asyncRoute(async(req,res)=>{
+ await removeElevenLabsKey(req.user.sub);
+ res.json({connected:false,message:"Chave pessoal desconectada. A Bia voltou a usar a chave padrão da plataforma."});
 }));
 app.patch("/api/v1/me/profile",authRequired,asyncRoute(async(req,res)=>{
  const {organizationName,websiteUrl,contactPhone,rightsDeclaration}=req.body||{};
