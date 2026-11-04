@@ -73,7 +73,47 @@ app.get("/api/v1/offers",asyncRoute(async(req,res)=>{
  res.json({offers:r.rows});
 }));
 app.post("/api/v1/licenses/request",authRequired,asyncRoute(async(req,res)=>{
- return res.status(501).json({error:"Solicitação e emissão de licença dependem da etapa de pagamento. Pagamentos estão desativados; nenhuma cobrança será iniciada.",payments:"disabled"});
+ const {offerId,requestMessage="",termsAccepted}=req.body||{};
+ if(!offerId||termsAccepted!==true)return res.status(400).json({error:"Informe a oferta e aceite expressamente os termos."});
+ const order=await transaction(async client=>{
+  const offer=await client.query("SELECT o.*,c.title,c.status AS content_status FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.id=$1 AND o.active=true FOR UPDATE OF o",[offerId]);
+  if(!offer.rowCount||offer.rows[0].content_status!=="approved")throw Object.assign(new Error("Oferta indisponível."),{status:404});
+  const o=offer.rows[0];
+  if(o.owner_user_id===req.user.sub)throw Object.assign(new Error("Você não pode solicitar licença do seu próprio conteúdo."),{status:400});
+  const created=await client.query("INSERT INTO license_orders(offer_id,buyer_user_id,publisher_user_id,stripe_account_id,currency,gross_amount_cents,platform_fee_cents,creator_net_cents,status,buyer_message) VALUES($1,$2,$3,NULL,$4,$5,0,$5,'pending',$6) RETURNING *",[o.id,req.user.sub,o.owner_user_id,o.currency,o.price_cents,String(requestMessage).slice(0,2000)]);
+  await client.query("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES($1,'license.requested','license_order',$2,$3::jsonb)",[req.user.sub,String(created.rows[0].id),JSON.stringify({offerId:o.id,contentId:o.content_id,payments:"external_between_parties"})]);
+  return {...created.rows[0],content_title:o.title,purpose:o.purpose,territory:o.territory,duration_days:o.duration_days};
+ });
+ res.status(201).json({order,payments:"external_between_parties",message:"Solicitação enviada ao titular. A negociação e qualquer pagamento acontecem diretamente entre as partes, fora do Licença News."});
+}));
+app.get("/api/v1/licenses/mine",authRequired,asyncRoute(async(req,res)=>{
+ const r=await query("SELECT o.*,c.title,l.license_code,l.status AS license_status,l.starts_at,l.expires_at FROM license_orders o JOIN license_offers f ON f.id=o.offer_id JOIN content_items c ON c.id=f.content_id LEFT JOIN issued_licenses l ON l.order_id=o.id WHERE o.buyer_user_id=$1 OR o.publisher_user_id=$1 ORDER BY o.created_at DESC",[req.user.sub]);
+ res.json({orders:r.rows});
+}));
+app.patch("/api/v1/licenses/:id/respond",authRequired,asyncRoute(async(req,res)=>{
+ const {decision,responseMessage=""}=req.body||{};
+ if(!["accept","decline"].includes(decision))return res.status(400).json({error:"Decisão inválida."});
+ const result=await transaction(async client=>{
+  const found=await client.query("SELECT o.*,f.content_id,f.purpose,f.territory,f.duration_days,f.owner_user_id FROM license_orders o JOIN license_offers f ON f.id=o.offer_id WHERE o.id=$1 FOR UPDATE OF o",[req.params.id]);
+  if(!found.rowCount)return null;
+  const order=found.rows[0];
+  if(order.publisher_user_id!==req.user.sub)return {forbidden:true};
+  if(order.status!=="pending")return {conflict:true};
+  const status=decision==="accept"?"accepted":"declined";
+  const updated=await client.query("UPDATE license_orders SET status=$2,publisher_response=$3,updated_at=now() WHERE id=$1 RETURNING *",[order.id,status,String(responseMessage).slice(0,2000)]);
+  let license=null;
+  if(decision==="accept"){
+   const code="LN-"+randomBytes(12).toString("hex").toUpperCase();
+   const issued=await client.query("INSERT INTO issued_licenses(order_id,license_code,content_id,owner_user_id,buyer_user_id,purpose,territory,starts_at,expires_at,status) VALUES($1,$2,$3,$4,$5,$6,$7,now(),now()+($8::int * interval '1 day'),'active') RETURNING *",[order.id,code,order.content_id,order.publisher_user_id,order.buyer_user_id,order.purpose,order.territory,order.duration_days]);
+   license=issued.rows[0];
+  }
+  await client.query("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'license_order',$3,$4::jsonb)",[req.user.sub,"license."+status,String(order.id),JSON.stringify({licenseCode:license?.license_code||null})]);
+  return {order:updated.rows[0],license};
+ });
+ if(!result)return res.status(404).json({error:"Solicitação não encontrada."});
+ if(result.forbidden)return res.status(403).json({error:"Somente o titular do conteúdo pode responder a esta solicitação."});
+ if(result.conflict)return res.status(409).json({error:"Esta solicitação já foi respondida."});
+ res.json({order:result.order,license:result.license,message:decision==="accept"?"Autorização registrada e licença emitida.":"Solicitação recusada."});
 }));
 app.get("/api/v1/licenses/verify/:code",asyncRoute(async(req,res)=>{
  const r=await query("SELECT license_code,status,purpose,territory,starts_at,expires_at,content_id FROM issued_licenses WHERE license_code=$1",[req.params.code]);
