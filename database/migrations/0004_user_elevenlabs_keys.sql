@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS user_elevenlabs_keys (
-  user_id UUID PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  user_id TEXT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
   encrypted_key TEXT NOT NULL,
   key_iv TEXT NOT NULL,
   key_tag TEXT NOT NULL,
