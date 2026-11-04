@@ -1,0 +1,34 @@
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* The top edge of a phone screen with its hardware camera pill, so the
+   Dynamic Island shape has the pill it joins. */
+.phoneTop {
+  position: relative;
+  padding-bottom: 1rem;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+.pill {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  width: 126px;
+  height: 37px;
+  margin-left: -63px;
+  background: #000;
+  border-radius: 20px;
+}

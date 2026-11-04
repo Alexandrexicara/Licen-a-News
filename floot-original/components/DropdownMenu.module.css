@@ -1,0 +1,174 @@
+@layer base {
+  /* Quiet menu: a hairline border and a deep soft shadow; rows highlight
+     with a faint tint of the text colour, never the brand colour. Shared look
+     with ContextMenu, the Select list and Command.
+     A destructive row: <DropdownMenuItem data-variant="destructive">. */
+  .content,
+  .subContent {
+    min-width: 12rem;
+    overflow: hidden;
+    background-color: var(--popup);
+    color: var(--popup-foreground);
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
+    box-shadow:
+      0 2px 6px rgb(0 0 0 / 0.06),
+      0 16px 36px -10px rgb(0 0 0 / 0.22);
+    padding: 4px;
+    animation: scaleIn var(--animation-duration-fast) ease-out;
+    z-index: var(--z-overlay);
+  }
+
+  .subContent {
+    animation: fadeIn var(--animation-duration-fast) ease-out;
+  }
+
+  .item,
+  .checkboxItem,
+  .radioItem,
+  .subTrigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 7px;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    padding: 6px 8px;
+    color: var(--popup-foreground);
+    outline: none;
+    transition: background-color var(--animation-duration-fast);
+  }
+
+  .item > svg,
+  .subTrigger > svg:first-child {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+  }
+
+  .item:hover,
+  .checkboxItem:hover,
+  .radioItem:hover,
+  .subTrigger:hover,
+  .item[data-highlighted],
+  .checkboxItem[data-highlighted],
+  .radioItem[data-highlighted],
+  .subTrigger[data-highlighted],
+  .subTrigger[data-state="open"] {
+    background-color: color-mix(in srgb, var(--foreground) 6%, transparent);
+    color: var(--popup-foreground);
+  }
+
+  .item:hover > svg,
+  .item[data-highlighted] > svg,
+  .subTrigger[data-highlighted] > svg:first-child {
+    color: var(--popup-foreground);
+  }
+
+  .item[data-variant="destructive"],
+  .item[data-variant="destructive"] > svg {
+    color: var(--error);
+  }
+
+  .item[data-variant="destructive"]:hover,
+  .item[data-variant="destructive"][data-highlighted] {
+    background-color: color-mix(in srgb, var(--error) 9%, transparent);
+    color: var(--error);
+  }
+
+  .item[data-disabled],
+  .checkboxItem[data-disabled],
+  .radioItem[data-disabled],
+  .subTrigger[data-disabled] {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  .checkboxItem,
+  .radioItem {
+    padding-left: 30px;
+  }
+
+  .checkboxIndicator,
+  .radioIndicator {
+    position: absolute;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 1rem;
+    width: 1rem;
+  }
+
+  .checkboxIndicator svg {
+    height: 0.875rem;
+    width: 0.875rem;
+  }
+
+  .radioIndicatorCircle {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: var(--radius-full);
+    background-color: currentColor;
+  }
+
+  .label {
+    padding: 6px 8px 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+  }
+
+  .separator {
+    height: 1px;
+    margin: 4px -4px;
+    background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+
+  /* Shortcuts as small keycaps. */
+  .shortcut {
+    margin-left: auto;
+    padding: 1px 5px;
+    font-size: 0.6875rem;
+    letter-spacing: 0.02em;
+    color: var(--muted-foreground);
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+    background-color: color-mix(in srgb, var(--foreground) 3%, transparent);
+  }
+
+  .subTriggerIcon {
+    margin-left: auto;
+    height: 0.875rem;
+    width: 0.875rem;
+    color: var(--muted-foreground);
+  }
+
+  .inset {
+    padding-left: 30px;
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

@@ -1,0 +1,94 @@
+@layer base {
+  /* A segmented control: a tinted track, the pressed item raised as a card.
+     The track is as tall as a button of the same size (32 / 36 / 44px).
+     The root only holds the track, so layout a page puts on the group
+     (flex, wrap, gap) cannot break the track into rows. */
+  .toggleGroup {
+    display: inline-flex;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .track {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    /* Too many options for the room: scroll sideways, never wrap. */
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    border-radius: calc(var(--radius) + 2px);
+    background-color: color-mix(in srgb, var(--foreground) 6%, var(--card));
+  }
+
+  .track::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
+  .toggleGroup[data-orientation="vertical"] .track {
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: visible;
+  }
+
+  .toggleGroup .item {
+    flex-shrink: 0;
+    background-color: transparent;
+    border-color: transparent;
+    border-radius: calc(var(--radius) - 1px);
+    color: var(--muted-foreground);
+  }
+
+  .toggleGroup .item-size-sm {
+    height: 1.625rem;
+    min-width: 1.625rem;
+  }
+
+  .toggleGroup .item-size-md {
+    height: 1.875rem;
+    min-width: 1.875rem;
+  }
+
+  .toggleGroup .item-size-lg {
+    height: 2.375rem;
+    min-width: 2.375rem;
+  }
+
+  .toggleGroup .item:hover {
+    color: var(--foreground);
+  }
+
+  .toggleGroup .item[data-state="on"] {
+    background-color: var(--card);
+    color: var(--foreground);
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.1),
+      0 0 0 1px color-mix(in srgb, var(--foreground) 6%, transparent);
+  }
+
+  :global(.dark) .toggleGroup .item[data-state="on"] {
+    background-color: color-mix(in srgb, var(--foreground) 12%, var(--card));
+  }
+
+  /* Keyboard focus: a 2px ring, not the usual 4px halo, so it fits inside the
+     track's 3px padding and the scrolling track never clips it. */
+  .toggleGroup .item:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 22%, transparent);
+  }
+
+  .toggleGroup .item[data-state="on"]:focus-visible {
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.1),
+      0 0 0 2px color-mix(in srgb, var(--foreground) 22%, transparent);
+  }
+
+  /* shape="pill" */
+  .pill .track,
+  .pill .item {
+    border-radius: 9999px;
+  }
+}

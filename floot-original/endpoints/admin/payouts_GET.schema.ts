@@ -1,0 +1,1 @@
+export type OutputType={payouts:Array<{id:string;ownerName:string;ownerEmail:string;amountCents:number;status:string;createdAt:string;requestId:string}>};

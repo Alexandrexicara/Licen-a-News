@@ -1,0 +1,80 @@
+@layer base {
+  /* Soft pills: no track and no rule. Each tab is a pill; the active one is
+     filled with the same faint tint as the menu highlight and the fields. */
+  .tabsList {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    /* Room for the focus halo inside the scroll box, without moving the row. */
+    padding: 4px;
+    margin: -4px;
+    flex-shrink: 0;
+  }
+
+  .tabsList::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  .tabsTrigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: var(--font-family-base);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    color: var(--muted-foreground);
+    background-color: transparent;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color var(--animation-duration-fast) ease,
+      color var(--animation-duration-fast) ease,
+      box-shadow var(--animation-duration-fast) ease;
+  }
+
+  .tabsTrigger svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+  }
+
+  .tabsTrigger:hover:not([disabled]) {
+    color: var(--foreground);
+    background-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+  }
+
+  .tabsTrigger[data-state="active"],
+  .tabsTrigger[data-state="active"]:hover {
+    color: var(--foreground);
+    background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+
+  .tabsTrigger:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--foreground) 9%, transparent);
+  }
+
+  .tabsTrigger[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .tabsContent {
+    /* No rule under the pills any more, so the panel keeps its own gap. */
+    margin-top: var(--spacing-3);
+    color: var(--foreground);
+    outline: none;
+  }
+
+  .tabsContent[hidden] {
+    display: none !important;
+  }
+}

@@ -1,0 +1,1 @@
+export type OutputType={items:Array<{contentId:string;title:string;summary:string|null;publisher:string;contentType:string;purpose:string;priceCents:number;currency:string;territory:string;durationDays:number}>};

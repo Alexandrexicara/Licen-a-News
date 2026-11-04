@@ -1,0 +1,1 @@
+export type OutputType={licenses:Array<{licenseCode:string;contentTitle:string;purpose:string;territory:string;startsAt:string;expiresAt:string;status:string;side:string}>};

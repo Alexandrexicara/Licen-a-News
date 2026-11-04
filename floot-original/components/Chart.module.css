@@ -1,0 +1,165 @@
+@layer base {
+  .container {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    padding-top: var(--spacing-4);
+    font-family: var(--font-family-base);
+  }
+
+  /* Recharts theming */
+  .container :global(.recharts-cartesian-axis-tick text) {
+    fill: var(--muted-foreground);
+    font-size: 0.75rem;
+  }
+
+  .container :global(.recharts-cartesian-axis-line),
+  .container :global(.recharts-cartesian-axis-tick-line) {
+    stroke: var(--border);
+  }
+
+  .container :global(.recharts-cartesian-grid line),
+  .container :global(.recharts-polar-grid),
+  .container :global(.recharts-reference-line line) {
+    stroke: color-mix(in srgb, var(--border) 50%, transparent);
+  }
+
+  .container :global(.recharts-curve.recharts-tooltip-cursor) {
+    stroke: var(--border);
+  }
+
+  .container :global(.recharts-rectangle.recharts-tooltip-cursor) {
+    fill: var(--muted);
+    opacity: 0.3;
+  }
+
+  .container :global(.recharts-dot[stroke="#fff"]),
+  .container :global(.recharts-sector[stroke="#fff"]) {
+    stroke: transparent;
+  }
+
+  .container :global(.recharts-radial-bar-background-sector) {
+    fill: var(--muted);
+  }
+
+  /* Recharts 3 enables the keyboard accessibility layer by default; keep focus rings off the SVG internals. */
+  .container :global(.recharts-surface),
+  .container :global(.recharts-layer),
+  .container :global(.recharts-sector),
+  .container :global(.recharts-wrapper) {
+    outline: none;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    background-color: var(--popup);
+    color: var(--popup-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-3);
+    min-width: 160px;
+    max-width: 300px;
+    font-size: 0.875rem;
+    animation: tooltipFadeIn var(--animation-duration-normal) ease-in-out;
+  }
+
+  @keyframes tooltipFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .tooltipLabel {
+    font-weight: 600;
+    margin-bottom: var(--spacing-2);
+    padding-bottom: var(--spacing-2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tooltipItems {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .tooltipItem {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+
+  .tooltipItemLabel {
+    flex: 1;
+    font-weight: 500;
+  }
+
+  .tooltipItemValue {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .indicator {
+    flex-shrink: 0;
+    --indicator-color-resolved: var(--indicator-color, var(--chart-color-1));
+  }
+
+  .indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background-color: var(--indicator-color-resolved);
+  }
+
+  .indicator-line {
+    width: 12px;
+    height: 2px;
+    background-color: var(--indicator-color-resolved);
+  }
+
+  .indicator-dashed {
+    width: 12px;
+    height: 2px;
+    background: repeating-linear-gradient(
+      to right,
+      var(--indicator-color-resolved) 0 2px,
+      transparent 2px 4px
+    );
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-4);
+    justify-content: center;
+    padding: var(--spacing-2);
+  }
+
+  .legend-top {
+    margin-bottom: var(--spacing-2);
+  }
+
+  .legend-bottom {
+    margin-top: var(--spacing-2);
+  }
+
+  .legendItem {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: 0.875rem;
+    color: var(--surface-foreground);
+  }
+
+  .legendItemIcon {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+  }
+}

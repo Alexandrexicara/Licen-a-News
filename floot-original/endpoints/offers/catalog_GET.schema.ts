@@ -1,0 +1,1 @@
+export type OutputType={offers:Array<{offerId:string;contentId:string;title:string;summary:string|null;publisher:string;purpose:string;priceCents:number;currency:string;territory:string;durationDays:number;terms:string}>};

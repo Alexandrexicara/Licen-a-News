@@ -1,0 +1,46 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Licença News API",
+    "version": "1.0.0",
+    "description": "API de catálogo e verificação de licenças jornalísticas. A busca exige chave de API. A autorização efetiva depende de licença ativa, escopo, prazo e território."
+  },
+  "servers": [{ "url": "https://SEU-DOMINIO" }],
+  "components": {
+    "securitySchemes": {
+      "BearerApiKey": { "type": "http", "scheme": "bearer", "bearerFormat": "LicencaNews API key" }
+    },
+    "schemas": {
+      "LicenseVerification": {
+        "type": "object",
+        "properties": {
+          "licenseCode": { "type": "string", "example": "LN-XXXXXXXXXXXX" }
+        },
+        "required": ["licenseCode"]
+      }
+    }
+  },
+  "paths": {
+    "/_api/v1/content/search": {
+      "get": {
+        "summary": "Pesquisar conteúdos disponíveis para licenciamento",
+        "security": [{ "BearerApiKey": [] }],
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "purpose", "in": "query", "schema": { "type": "string", "enum": ["indexing", "summary", "snippet", "reproduction", "ai_training"] } }
+        ],
+        "responses": { "200": { "description": "Ofertas aprovadas disponíveis" }, "401": { "description": "Chave ausente ou inválida" } }
+      }
+    },
+    "/_api/licenses/verify": {
+      "post": {
+        "summary": "Verificar validade de uma licença emitida",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LicenseVerification" } } }
+        },
+        "responses": { "200": { "description": "Resultado da verificação" } }
+      }
+    }
+  }
+}

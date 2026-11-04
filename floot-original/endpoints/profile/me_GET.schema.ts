@@ -1,0 +1,1 @@
+export type OutputType={profile:null|{id:string;accountType:string;organizationName:string|null;verificationStatus:string;verificationNotes:string|null}};

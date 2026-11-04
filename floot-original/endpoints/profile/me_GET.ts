@@ -1,0 +1,5 @@
+import {db} from "../../helpers/db";
+import {getServerUserSession} from "../../helpers/getServerUserSession";
+import {NotAuthenticatedError} from "../../helpers/getSetServerSession";
+import superjson from "superjson";
+export async function handle(request:Request){try{const {user}=await getServerUserSession(request);const p=await db.selectFrom("publisherProfiles").select(["id","accountType","organizationName","verificationStatus","verificationNotes"]).where("userId","=",user.id).executeTakeFirst();return new Response(superjson.stringify({profile:p?{...p,id:String(p.id)}:null}),{headers:{"Content-Type":"application/json"}});}catch(e){return new Response(superjson.stringify({error:e instanceof Error?e.message:"Não autenticado"}),{status:e instanceof NotAuthenticatedError?401:400,headers:{"Content-Type":"application/json"}});}}

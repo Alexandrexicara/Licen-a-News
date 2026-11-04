@@ -1,0 +1,5 @@
+import {z} from "zod";
+import superjson from "superjson";
+export const schema=z.object({contentId:z.string().regex(/^\d+$/),purpose:z.enum(["indexing","summary","snippet","reproduction","ai_training"]),priceCents:z.number().int().min(100).max(100000000),territory:z.string().min(2).max(80).default("BR"),durationDays:z.number().int().min(1).max(3650),exclusive:z.boolean().default(false),terms:z.string().min(20).max(5000)});
+export type OutputType={offerId:string;status:string};
+export const postCreateOffer=async(body:z.infer<typeof schema>):Promise<OutputType>=>{const r=await fetch("/_api/offers/create",{method:"POST",headers:{"Content-Type":"application/json"},body:superjson.stringify(schema.parse(body))});const d=superjson.parse<OutputType|{error:string}>(await r.text());if(!r.ok)throw new Error("error" in d?d.error:"Falha ao criar oferta");return d as OutputType;};

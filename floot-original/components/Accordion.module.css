@@ -1,0 +1,143 @@
+@layer base {
+  /* Soft lift. variant="card" (default): one container with a hairline border
+     and a faint shadow, like an outline button, with hairline dividers between
+     items. variant="plain": dividers only, for FAQs and settings pages. */
+  .card {
+    border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+    border-radius: var(--radius-md);
+    background-color: var(--card);
+    color: var(--card-foreground);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    overflow: hidden;
+  }
+
+  .plain {
+    color: inherit;
+  }
+
+  .item {
+    border-bottom: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
+  }
+
+  .card .item:last-child {
+    border-bottom: none;
+  }
+
+  .item:has(.trigger:disabled) {
+    opacity: 0.5;
+  }
+
+  .header {
+    display: flex;
+    margin: 0;
+  }
+
+  .trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    font-family: var(--font-family-base);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: left;
+    background-color: transparent;
+    color: var(--foreground);
+    border: none;
+    cursor: pointer;
+    outline: none;
+    transition: background-color var(--animation-duration-fast) ease;
+  }
+
+  /* Only closed rows get the tint: on an open item it would cover the title
+     strip alone and split the item in two. */
+  .card .trigger[data-state="closed"]:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--foreground) 3%, transparent);
+  }
+
+  .trigger:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Keyboard focus: a thin rounded ring set in from the row's edges, no fill,
+     so it never meets the container border or the dividers. */
+  .trigger:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--foreground) 16%, transparent);
+    outline-offset: -4px;
+    border-radius: var(--radius-md);
+  }
+
+  .plain .trigger {
+    padding: 14px 0;
+  }
+
+  .plain .trigger:focus-visible {
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+    transition:
+      transform var(--animation-duration-normal) cubic-bezier(0.16, 1, 0.3, 1),
+      color var(--animation-duration-fast) ease;
+  }
+
+  .trigger:hover:not(:disabled) .icon {
+    color: var(--foreground);
+  }
+
+  .trigger[data-state="open"] .icon {
+    transform: rotate(180deg);
+  }
+
+  .content {
+    overflow: hidden;
+    color: inherit;
+    animation: accordion-up var(--animation-duration-normal)
+      cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .content[data-state="open"] {
+    animation: accordion-down var(--animation-duration-normal)
+      cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* No top padding on purpose: the title row's 14px bottom padding is the
+     space above the text, and this 14px is the space below it, so the text
+     sits evenly between the title and the next divider. */
+  .contentInner {
+    padding: 0 16px 14px;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  .plain .contentInner {
+    padding: 0 0 14px;
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+}

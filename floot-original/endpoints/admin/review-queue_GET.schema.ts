@@ -1,0 +1,1 @@
+export type OutputType={profiles:Array<{id:string;displayName:string;email:string;organizationName:string|null;accountType:string;createdAt:string}>;contents:Array<{id:string;title:string;contentType:string;ownerName:string;ownerEmail:string;createdAt:string;rightsDeclaration:string}>};
