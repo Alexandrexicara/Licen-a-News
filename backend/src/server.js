@@ -101,19 +101,32 @@ app.patch("/api/v1/licenses/:id/respond",authRequired,asyncRoute(async(req,res)=
   if(order.status!=="pending")return {conflict:true};
   const status=decision==="accept"?"accepted":"declined";
   const updated=await client.query("UPDATE license_orders SET status=$2,publisher_response=$3,updated_at=now() WHERE id=$1 RETURNING *",[order.id,status,String(responseMessage).slice(0,2000)]);
-  let license=null;
-  if(decision==="accept"){
-   const code="LN-"+randomBytes(12).toString("hex").toUpperCase();
-   const issued=await client.query("INSERT INTO issued_licenses(order_id,license_code,content_id,owner_user_id,buyer_user_id,purpose,territory,starts_at,expires_at,status) VALUES($1,$2,$3,$4,$5,$6,$7,now(),now()+($8::int * interval '1 day'),'active') RETURNING *",[order.id,code,order.content_id,order.publisher_user_id,order.buyer_user_id,order.purpose,order.territory,order.duration_days]);
-   license=issued.rows[0];
-  }
-  await client.query("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'license_order',$3,$4::jsonb)",[req.user.sub,"license."+status,String(order.id),JSON.stringify({licenseCode:license?.license_code||null})]);
-  return {order:updated.rows[0],license};
+  await client.query("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'license_order',$3,$4::jsonb)",[req.user.sub,"license."+status,String(order.id),JSON.stringify({payments:"external_between_parties"})]);
+  return {order:updated.rows[0]};
  });
  if(!result)return res.status(404).json({error:"Solicitação não encontrada."});
  if(result.forbidden)return res.status(403).json({error:"Somente o titular do conteúdo pode responder a esta solicitação."});
  if(result.conflict)return res.status(409).json({error:"Esta solicitação já foi respondida."});
- res.json({order:result.order,license:result.license,message:decision==="accept"?"Autorização registrada e licença emitida.":"Solicitação recusada."});
+ res.json({order:result.order,message:decision==="accept"?"Autorização aprovada. A licença será emitida quando o titular confirmar o acordo diretamente com o comprador.":"Solicitação recusada."});
+}));
+app.post("/api/v1/licenses/:id/issue",authRequired,asyncRoute(async(req,res)=>{
+ const result=await transaction(async client=>{
+  const found=await client.query("SELECT o.*,f.content_id,f.purpose,f.territory,f.duration_days FROM license_orders o JOIN license_offers f ON f.id=o.offer_id WHERE o.id=$1 FOR UPDATE OF o",[req.params.id]);
+  if(!found.rowCount)return {notFound:true};
+  const order=found.rows[0];
+  if(order.publisher_user_id!==req.user.sub)return {forbidden:true};
+  if(order.status!=="accepted")return {conflict:true};
+  const existing=await client.query("SELECT * FROM issued_licenses WHERE order_id=$1",[order.id]);
+  if(existing.rowCount)return {license:existing.rows[0],alreadyIssued:true};
+  const code="LN-"+randomBytes(12).toString("hex").toUpperCase();
+  const issued=await client.query("INSERT INTO issued_licenses(order_id,license_code,content_id,owner_user_id,buyer_user_id,purpose,territory,starts_at,expires_at,status) VALUES($1,$2,$3,$4,$5,$6,$7,now(),now()+($8::int * interval '1 day'),'active') RETURNING *",[order.id,code,order.content_id,order.publisher_user_id,order.buyer_user_id,order.purpose,order.territory,order.duration_days]);
+  await client.query("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES($1,'license.issued','license_order',$2,$3::jsonb)",[req.user.sub,String(order.id),JSON.stringify({licenseCode:code,externalSettlementConfirmed:true})]);
+  return {license:issued.rows[0]};
+ });
+ if(result.notFound)return res.status(404).json({error:"Solicitação não encontrada."});
+ if(result.forbidden)return res.status(403).json({error:"Somente o titular pode emitir a licença."});
+ if(result.conflict)return res.status(409).json({error:"A solicitação precisa estar aprovada antes da emissão."});
+ res.status(result.alreadyIssued?200:201).json({license:result.license,message:result.alreadyIssued?"Esta licença já havia sido emitida.":"Licença emitida após confirmação do titular sobre o acordo externo."});
 }));
 app.get("/api/v1/licenses/verify/:code",asyncRoute(async(req,res)=>{
  const r=await query("SELECT license_code,status,purpose,territory,starts_at,expires_at,content_id FROM issued_licenses WHERE license_code=$1",[req.params.code]);
