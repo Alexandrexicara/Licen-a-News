@@ -34,8 +34,12 @@ export async function getWooviAccount(userId) {
   return { appId: open({app_id_encrypted:row.app_id_encrypted,app_id_iv:row.app_id_iv,app_id_tag:row.app_id_tag},"app_id"), hmacSecret: open({webhook_hmac_encrypted:row.webhook_hmac_encrypted,webhook_hmac_iv:row.webhook_hmac_iv,webhook_hmac_tag:row.webhook_hmac_tag},"webhook_hmac"), tokenHash: row.webhook_token_hash, hint: row.app_id_hint };
 }
 export async function getWooviAccountStatus(userId) {
-  const r=await query("SELECT app_id_hint,connected_at,updated_at FROM user_woovi_accounts WHERE user_id=$1",[userId]);
-  return r.rowCount ? {connected:true,appIdHint:"••••"+r.rows[0].app_id_hint,connectedAt:r.rows[0].connected_at,updatedAt:r.rows[0].updated_at} : {connected:false};
+  const r=await query("SELECT app_id_hint,connected_at,updated_at,consented_at,consent_version,payout_permission_status,payout_permission_verified_at,payout_test_confirmed_at FROM user_woovi_accounts WHERE user_id=$1",[userId]);
+  if(!r.rowCount) return {connected:false,consented:false,payoutPermissionStatus:"not_connected",canPublish:false};
+  const a=r.rows[0];
+  const consented=!!a.consented_at;
+  const permissionVerified=a.payout_permission_status==="verified"&&!!a.payout_permission_verified_at;
+  return {connected:true,appIdHint:"••••"+a.app_id_hint,connectedAt:a.connected_at,updatedAt:a.updated_at,consented,consentedAt:a.consented_at,consentVersion:a.consent_version,payoutPermissionStatus:a.payout_permission_status,payoutPermissionVerifiedAt:a.payout_permission_verified_at,payoutTestConfirmedAt:a.payout_test_confirmed_at,canPublish:consented&&permissionVerified};
 }
 export async function removeWooviAccount(userId) {
   await query("DELETE FROM user_woovi_accounts WHERE user_id=$1",[userId]);
