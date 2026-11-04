@@ -17,7 +17,7 @@ Defina as variáveis abaixo no ambiente privado do serviço de API (Render ou am
 - `NVIDIA_API_URL`: por padrão `https://integrate.api.nvidia.com/v1/chat/completions`.
 - `NVIDIA_MODEL`: por padrão `meta/llama-3.3-70b-instruct`.
 - `ELEVENLABS_API_KEY`: chave da ElevenLabs.
-- `ELEVENLABS_VOICE_ID`: voz feminina Bella selecionada como padrão (`EXAVITQu4vr4xnSDxMaL`).
+- `ELEVENLABS_VOICE_ID`: voz feminina Sofia — Natural & Expressiva, português brasileiro (`n2a9VtkZLl8j1FSXHsL7`).
 - `ELEVENLABS_MODEL_ID`: por padrão `eleven_multilingual_v2`.
 
 A voz escolhida é uma configuração inicial. A disponibilidade e as permissões da voz dependem da conta ElevenLabs conectada.
