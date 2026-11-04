@@ -28,3 +28,6 @@
 @keyframes ln-mouth-talk{from{transform:scaleY(.55)}to{transform:scaleY(1.8)}}
 @keyframes ln-eye-listen{0%,100%{opacity:1}50%{opacity:.55}}
 
+
+/* A Bia funciona exclusivamente pelo robô e pelo microfone; o painel antigo nunca abre. */
+.ln-assistant-panel{display:none!important;visibility:hidden!important;pointer-events:none!important}
