@@ -6,11 +6,13 @@ import bcrypt from "bcryptjs";
 import { randomBytes,createHash,randomUUID } from "node:crypto";
 import { query,transaction } from "./db.js";
 import { authRequired,adminRequired,signToken } from "./auth.js";
+import assistantRouter from "./assistant.js";
 
 const app=express();
 app.use(helmet());
 app.use(cors({origin:(process.env.CORS_ORIGIN||"").split(",").filter(Boolean),credentials:true}));
 app.use(express.json({limit:"2mb"}));
+app.use("/api/v1/assistant",assistantRouter);
 const asyncRoute=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
 const cleanUser=r=>({id:r.id,email:r.email,name:r.name,role:r.role,accountType:r.account_type});
 app.get("/health",(req,res)=>res.json({status:"ok",service:"licenca-news-api"}));
