@@ -17,7 +17,7 @@ Marketplace de licenciamento de conteúdo jornalístico e de criadores.
 - **Frontend:** Netlify (site estático/SPA).
 - **Backend:** Render (API Node.js).
 - **Banco:** Neon PostgreSQL, projeto `licenca-news`, região São Paulo, banco `licenca_news`, branch `main`.
-- **Pagamentos:** integração Sicoob Pix preparada em branch separada; cobranças permanecem desativadas até credenciais, mTLS, chave recebedora, webhook e homologação.
+- **Pagamentos:** integração Sicoob Pix preparada em branch separada; cobranças permanecem desativadas até cada publicador conectar suas credenciais mTLS, cadastrar sua chave recebedora e concluir a homologação.
 
 ## Banco de dados
 
