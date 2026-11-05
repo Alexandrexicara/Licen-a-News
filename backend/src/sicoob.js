@@ -10,7 +10,7 @@ function settings(credentials={}){
 function agent(c){if(!c.pfxBase64)throw new Error("Certificado mTLS PFX não configurado.");return new https.Agent({pfx:Buffer.from(c.pfxBase64,"base64"),passphrase:c.pfxPassword,minVersion:"TLSv1.2",rejectUnauthorized:true});}
 async function accessToken(credentials={}){
  const c=settings(credentials);if(!c.clientId||!c.clientSecret)throw new Error("Client ID e Client Secret Sicoob não configurados.");
- const cacheKey=createHash("sha256").update(c.clientId+"|"+c.pfxBase64).digest("hex"),cached=tokens.get(cacheKey);
+ const cacheKey=createHash("sha256").update(c.clientId+"|"+c.clientSecret+"|"+c.pfxBase64).digest("hex"),cached=tokens.get(cacheKey);
  if(cached&&cached.expiresAt>Date.now()+30000)return cached.value;
  const form=new URLSearchParams({grant_type:"client_credentials",scope:c.scopes});
  const response=await axios.post(c.authUrl,form.toString(),{httpsAgent:agent(c),auth:{username:c.clientId,password:c.clientSecret},headers:{"Content-Type":"application/x-www-form-urlencoded"},timeout:20000});
