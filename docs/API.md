@@ -100,7 +100,6 @@ Migrações: em banco novo, execute 0001 e depois 0002. No Neon já provisionado
 | DELETE | `/api/v1/sicoob/me` | JWT; desconecta |
 | POST | `/api/v1/sicoob/orders/:id/charge` | JWT do comprador; pedido aceito |
 | GET | `/api/v1/sicoob/orders/:id/charge` | JWT de comprador ou publicador |
-| POST | `/api/v1/webhooks/sicoob/:userId/:token` | Callback complementar |
 
 Cada publicador conecta sua própria conta Sicoob e suas próprias credenciais. O backend consulta `GET /pix` a cada 60 segundos, identifica o TXID do pedido, confere valor e E2E ID, marca como pago e emite a licença. A conciliação não depende de webhook de entrada. O dinheiro é recebido diretamente pelo publicador; a plataforma não recebe nem repassa valores.
 
