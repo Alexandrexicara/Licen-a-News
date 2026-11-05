@@ -1,33 +1,31 @@
 import axios from "axios";
 import https from "node:https";
-
+import {createHash} from "node:crypto";
 const AUTH_URL=process.env.SICOOB_AUTH_URL||"https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token";
 const API_URL=(process.env.SICOOB_API_BASE_URL||"https://api.sicoob.com.br/pix/api/v2").replace(/\/+$/,"");
-let cachedToken=null,expiresAt=0;
-function httpsAgent(){
- const cert=process.env.SICOOB_MTLS_PFX_BASE64;
- if(!cert)throw new Error("Certificado mTLS do Sicoob ainda não configurado.");
- return new https.Agent({pfx:Buffer.from(cert,"base64"),passphrase:process.env.SICOOB_MTLS_PFX_PASSWORD||"",minVersion:"TLSv1.2",rejectUnauthorized:true});
+const tokens=new Map();
+function settings(credentials={}){
+ return {clientId:credentials.clientId||process.env.SICOOB_CLIENT_ID,clientSecret:credentials.clientSecret||process.env.SICOOB_CLIENT_SECRET,pfxBase64:credentials.pfxBase64||process.env.SICOOB_MTLS_PFX_BASE64,pfxPassword:credentials.pfxPassword??process.env.SICOOB_MTLS_PFX_PASSWORD??"",authUrl:credentials.authUrl||AUTH_URL,apiUrl:credentials.apiUrl||API_URL,scopes:credentials.scopes||process.env.SICOOB_SCOPES||"cob.read cob.write pix.read webhook.write webhook.read"};
 }
-export function sicoobStatus(){
- return {configured:Boolean(process.env.SICOOB_CLIENT_ID&&process.env.SICOOB_CLIENT_SECRET&&process.env.SICOOB_MTLS_PFX_BASE64),clientIdConfigured:Boolean(process.env.SICOOB_CLIENT_ID),clientSecretConfigured:Boolean(process.env.SICOOB_CLIENT_SECRET),certificateConfigured:Boolean(process.env.SICOOB_MTLS_PFX_BASE64),apiBaseUrl:API_URL,environment:process.env.SICOOB_ENVIRONMENT||"production"};
-}
-async function accessToken(){
- if(cachedToken&&expiresAt>Date.now()+30000)return cachedToken;
- const id=process.env.SICOOB_CLIENT_ID,secret=process.env.SICOOB_CLIENT_SECRET;
- if(!id||!secret)throw new Error("Credenciais Sicoob não configuradas.");
- const form=new URLSearchParams({grant_type:"client_credentials",scope:process.env.SICOOB_SCOPES||"cob.read cob.write pix.read webhook.write webhook.read"});
- const response=await axios.post(AUTH_URL,form.toString(),{httpsAgent:httpsAgent(),auth:{username:id,password:secret},headers:{"Content-Type":"application/x-www-form-urlencoded"},timeout:20000});
+function agent(c){if(!c.pfxBase64)throw new Error("Certificado mTLS PFX não configurado.");return new https.Agent({pfx:Buffer.from(c.pfxBase64,"base64"),passphrase:c.pfxPassword,minVersion:"TLSv1.2",rejectUnauthorized:true});}
+async function accessToken(credentials={}){
+ const c=settings(credentials);if(!c.clientId||!c.clientSecret)throw new Error("Client ID e Client Secret Sicoob não configurados.");
+ const cacheKey=createHash("sha256").update(c.clientId+"|"+c.pfxBase64).digest("hex"),cached=tokens.get(cacheKey);
+ if(cached&&cached.expiresAt>Date.now()+30000)return cached.value;
+ const form=new URLSearchParams({grant_type:"client_credentials",scope:c.scopes});
+ const response=await axios.post(c.authUrl,form.toString(),{httpsAgent:agent(c),auth:{username:c.clientId,password:c.clientSecret},headers:{"Content-Type":"application/x-www-form-urlencoded"},timeout:20000});
  if(!response.data?.access_token)throw new Error("Sicoob não retornou access_token.");
- cachedToken=response.data.access_token;expiresAt=Date.now()+Math.max(60,Number(response.data.expires_in||300))*1000;return cachedToken;
+ const value=response.data.access_token,expiresAt=Date.now()+Math.max(60,Number(response.data.expires_in||300))*1000;tokens.set(cacheKey,{value,expiresAt});return value;
 }
-export async function sicoobRequest(method,path,data){
- const token=await accessToken();
- const response=await axios({method,url:API_URL+path,data,httpsAgent:httpsAgent(),headers:{Authorization:"Bearer "+token,client_id:process.env.SICOOB_CLIENT_ID,Accept:"application/json","Content-Type":"application/json"},timeout:25000});
+export async function validateSicoobCredentials(credentials){await accessToken(credentials);return {valid:true};}
+export function sicoobStatus(){return {provider:"sicoob",configured:Boolean(process.env.SICOOB_CLIENT_ID&&process.env.SICOOB_CLIENT_SECRET&&process.env.SICOOB_MTLS_PFX_BASE64),environment:process.env.SICOOB_ENVIRONMENT||"production"};}
+export async function sicoobRequest(method,path,data,credentials={}){
+ const c=settings(credentials),token=await accessToken(credentials);
+ const response=await axios({method,url:c.apiUrl+path,data,httpsAgent:agent(c),headers:{Authorization:"Bearer "+token,client_id:c.clientId,Accept:"application/json","Content-Type":"application/json"},timeout:25000});
  return response.data;
 }
-export async function createPixCharge({txid,valueCents,pixKey,description}){
+export async function createPixCharge({txid,valueCents,pixKey,description},credentials={}){
  if(!Number.isSafeInteger(valueCents)||valueCents<1)throw new Error("Valor da cobrança inválido.");
  if(!pixKey)throw new Error("Chave Pix do titular não cadastrada.");
- return sicoobRequest("put","/cob/"+encodeURIComponent(txid),{calendario:{expiracao:Number(process.env.SICOOB_PIX_EXPIRATION_SECONDS||3600)},valor:{original:(valueCents/100).toFixed(2)},chave:pixKey,solicitacaoPagador:String(description||"Licenciamento de conteúdo").slice(0,140)});
+ return sicoobRequest("put","/cob/"+encodeURIComponent(txid),{calendario:{expiracao:Number(process.env.SICOOB_PIX_EXPIRATION_SECONDS||3600)},valor:{original:(valueCents/100).toFixed(2)},chave:pixKey,solicitacaoPagador:String(description||"Licenciamento de conteúdo").slice(0,140)},credentials);
 }
