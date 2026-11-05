@@ -81,8 +81,9 @@ app.get("/api/v1/content",asyncRoute(async(req,res)=>{
  res.json({items:r.rows});
 }));
 app.post("/api/v1/content",authRequired,asyncRoute(async(req,res)=>{
- const wooviState=await query("SELECT consented_at,payout_permission_status,payout_permission_verified_at FROM user_woovi_accounts WHERE user_id=$1",[req.user.sub]);
- if(!wooviState.rowCount||!wooviState.rows[0].consented_at||wooviState.rows[0].payout_permission_status!=="verified"||!wooviState.rows[0].payout_permission_verified_at)return res.status(403).json({error:"Para publicar, conecte a Woovi, aceite a comissão de 15% e confirme a permissão Pix Out da sua conta.",code:"WOOVI_AUTHORIZATION_REQUIRED"});
+ const paymentSetup=await query(`SELECT 1 WHERE EXISTS(SELECT 1 FROM publisher_pix_accounts WHERE user_id=$1 AND active=true)
+ OR EXISTS(SELECT 1 FROM user_woovi_accounts WHERE user_id=$1 AND consented_at IS NOT NULL AND payout_permission_status='verified' AND payout_permission_verified_at IS NOT NULL)`,[req.user.sub]);
+ if(!paymentSetup.rowCount)return res.status(403).json({error:"Cadastre uma chave Pix Sicoob ou conclua a autorização de recebimentos existente.",code:"PIX_RECEIVER_SETUP_REQUIRED"});
  const {contentType,title,summary="",canonicalUrl="",assetUrl="",sourceName="",authorName="",rightsEvidenceUrl="",rightsDeclaration}=req.body||{};
  if(!["article","photo","video","audio"].includes(contentType)||!title||!rightsDeclaration)return res.status(400).json({error:"Tipo, título e declaração de direitos são obrigatórios"});
  const r=await query("INSERT INTO content_items(owner_user_id,content_type,title,summary,canonical_url,asset_url,source_name,author_name,rights_evidence_url,rights_declaration) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *",[req.user.sub,contentType,title,summary,canonicalUrl,assetUrl,sourceName,authorName,rightsEvidenceUrl,rightsDeclaration]);
@@ -90,8 +91,9 @@ app.post("/api/v1/content",authRequired,asyncRoute(async(req,res)=>{
 }));
 app.get("/api/v1/content/mine",authRequired,asyncRoute(async(req,res)=>{const r=await query("SELECT * FROM content_items WHERE owner_user_id=$1 ORDER BY created_at DESC",[req.user.sub]);res.json({items:r.rows});}));
 app.post("/api/v1/content/:id/offers",authRequired,asyncRoute(async(req,res)=>{
- const wooviState=await query("SELECT consented_at,payout_permission_status,payout_permission_verified_at FROM user_woovi_accounts WHERE user_id=$1",[req.user.sub]);
- if(!wooviState.rowCount||!wooviState.rows[0].consented_at||wooviState.rows[0].payout_permission_status!=="verified"||!wooviState.rows[0].payout_permission_verified_at)return res.status(403).json({error:"Para publicar, conecte a Woovi, aceite a comissão de 15% e confirme a permissão Pix Out da sua conta.",code:"WOOVI_AUTHORIZATION_REQUIRED"});
+ const paymentSetup=await query(`SELECT 1 WHERE EXISTS(SELECT 1 FROM publisher_pix_accounts WHERE user_id=$1 AND active=true)
+ OR EXISTS(SELECT 1 FROM user_woovi_accounts WHERE user_id=$1 AND consented_at IS NOT NULL AND payout_permission_status='verified' AND payout_permission_verified_at IS NOT NULL)`,[req.user.sub]);
+ if(!paymentSetup.rowCount)return res.status(403).json({error:"Cadastre uma chave Pix Sicoob ou conclua a autorização de recebimentos existente.",code:"PIX_RECEIVER_SETUP_REQUIRED"});
  const {purpose,priceCents,currency="BRL",territory="BR",durationDays=365,exclusive=false,terms}=req.body||{};
  if(!["indexing","summary","snippet","reproduction","ai_training"].includes(purpose)||!Number.isInteger(Number(priceCents))||Number(priceCents)<=0||!terms)return res.status(400).json({error:"Dados da oferta inválidos"});
  const r=await query("INSERT INTO license_offers(content_id,owner_user_id,purpose,price_cents,currency,territory,duration_days,exclusive,terms) SELECT id,$2,$3,$4,$5,$6,$7,$8,$9 FROM content_items WHERE id=$1 AND owner_user_id=$2 AND status='approved' RETURNING *",[req.params.id,req.user.sub,purpose,priceCents,currency,territory,durationDays,exclusive,terms]);
@@ -99,14 +101,14 @@ app.post("/api/v1/content/:id/offers",authRequired,asyncRoute(async(req,res)=>{
  res.status(201).json({offer:r.rows[0]});
 }));
 app.get("/api/v1/offers",asyncRoute(async(req,res)=>{
- const r=await query("SELECT o.*,c.title,c.content_type,c.summary,c.asset_url FROM license_offers o JOIN content_items c ON c.id=o.content_id JOIN user_woovi_accounts wa ON wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL WHERE o.active=true AND c.status='approved' ORDER BY o.created_at DESC LIMIT 100");
+ const r=await query("SELECT o.*,c.title,c.content_type,c.summary,c.asset_url FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.active=true AND c.status='approved' AND (EXISTS(SELECT 1 FROM publisher_pix_accounts pa WHERE pa.user_id=o.owner_user_id AND pa.active=true) OR EXISTS(SELECT 1 FROM user_woovi_accounts wa WHERE wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL)) ORDER BY o.created_at DESC LIMIT 100");
  res.json({offers:r.rows});
 }));
 app.post("/api/v1/licenses/request",authRequired,asyncRoute(async(req,res)=>{
  const {offerId,requestMessage="",termsAccepted}=req.body||{};
  if(!offerId||termsAccepted!==true)return res.status(400).json({error:"Informe a oferta e aceite expressamente os termos."});
  const order=await transaction(async client=>{
-  const offer=await client.query("SELECT o.*,c.title,c.status AS content_status FROM license_offers o JOIN content_items c ON c.id=o.content_id JOIN user_woovi_accounts wa ON wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL WHERE o.id=$1 AND o.active=true FOR UPDATE OF o",[offerId]);
+  const offer=await client.query("SELECT o.*,c.title,c.status AS content_status FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.id=$1 AND o.active=true AND (EXISTS(SELECT 1 FROM publisher_pix_accounts pa WHERE pa.user_id=o.owner_user_id AND pa.active=true) OR EXISTS(SELECT 1 FROM user_woovi_accounts wa WHERE wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL)) FOR UPDATE OF o",[offerId]);
   if(!offer.rowCount||offer.rows[0].content_status!=="approved")throw Object.assign(new Error("Oferta indisponível."),{status:404});
   const o=offer.rows[0];
   if(o.owner_user_id===req.user.sub)throw Object.assign(new Error("Você não pode solicitar licença do seu próprio conteúdo."),{status:400});
