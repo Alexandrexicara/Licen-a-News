@@ -9,9 +9,8 @@ CREATE TABLE IF NOT EXISTS public.publisher_sicoob_accounts (
   client_id_tag TEXT NOT NULL, client_secret_tag TEXT NOT NULL,
   pfx_tag TEXT NOT NULL, pfx_password_tag TEXT NOT NULL, pix_key_tag TEXT NOT NULL,
   pix_key_type TEXT NOT NULL CHECK (pix_key_type IN ('CPF','CNPJ','EMAIL','PHONE','EVP')),
-  webhook_token_hash TEXT,
   connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  webhook_registered_at TIMESTAMPTZ, last_verified_at TIMESTAMPTZ,
+  last_verified_at TIMESTAMPTZ,
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
