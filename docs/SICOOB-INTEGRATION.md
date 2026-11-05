@@ -12,7 +12,7 @@ Cada jornalista, jornal, editora ou influenciador conecta a própria conta Sicoo
 
 Portal: https://developers.sicoob.com.br/portal/cadastro
 
-O portal disponibiliza cadastro PF/PJ. A liberação de aplicativo de produção depende de ser cooperado e dos requisitos do Sicoob; cadastro no portal, sozinho, não garante produção. Confirme com a cooperativa o tipo de certificado aceito para CPF e os escopos Pix Recebimentos liberados.
+O portal disponibiliza cadastro PF/PJ. O guia do Sicoob de julho de 2024 informa que o aplicativo PF fica ativo após a criação; o aplicativo PJ pode ficar pendente até autorização dos responsáveis. O titular precisa ter conta Sicoob e certificado ICP-Brasil correspondente (e-CPF para PF ou e-CNPJ para PJ, conforme aceitação do banco). Confirme com a cooperativa os escopos Pix Recebimentos e os requisitos de produção.
 
 ## Como a confirmação automática funciona
 
