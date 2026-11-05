@@ -17,7 +17,7 @@ Marketplace de licenciamento de conteúdo jornalístico e de criadores.
 - **Frontend:** Netlify (site estático/SPA).
 - **Backend:** Render (API Node.js).
 - **Banco:** Neon PostgreSQL, projeto `licenca-news`, região São Paulo, banco `licenca_news`, branch `main`.
-- **Pagamentos:** fora do escopo desta etapa. Nenhum gateway deve ser ativado até a escolha do provedor e do fluxo jurídico/financeiro.
+- **Pagamentos:** integração Sicoob Pix preparada em branch separada; cobranças permanecem desativadas até credenciais, mTLS, chave recebedora, webhook e homologação.
 
 ## Banco de dados
 
@@ -110,7 +110,9 @@ Frontend: servir a pasta `frontend` com um servidor estático local. O proxy de 
 - A integração de autenticação externa Google/GitHub não está implementada nesta primeira versão.
 - Upload de mídia precisa de serviço de armazenamento de objetos antes da produção.
 - Revisão editorial usa endpoints administrativos; a criação inicial do primeiro administrador deve ser feita por procedimento seguro no banco.
-- Nenhuma cobrança, split ou transferência Pix está habilitada.
+- Sicoob Pix: cliente OAuth/mTLS, rotas de cobrança/consulta, chave Pix criptografada por publicador, cadastro de webhook e emissão automática de licença após confirmação estão preparados na branch `feature/sicoob-pix-integration`; cobranças permanecem bloqueadas por padrão.
+- A migration `0003_sicoob_pix.sql` precisa ser aplicada após confirmar o estado das migrations 0001/0002 no Neon.
+- A integração Pix Recebimentos não implementa split nem Pix Out; uma credencial única não deve ser presumida como autorizada a cobrar em chaves Pix de terceiros.
 - Não declarar produção pronta antes de aplicar a migração 0002, configurar segredos, executar testes automatizados e validar os fluxos completos.
 
 
