@@ -3,7 +3,7 @@ import {randomBytes,createHash} from "node:crypto";
 import {query,transaction} from "./db.js";
 import {authRequired} from "./auth.js";
 import {sicoobRequest,validateSicoobCredentials,createPixCharge} from "./sicoob.js";
-import {savePublisherSicoob,getPublisherSicoob,publisherSicoobStatus,getPublisherSicoobByWebhook,markPublisherSicoobWebhook,removePublisherSicoob} from "./sicoob-accounts.js";
+import {savePublisherSicoob,getPublisherSicoob,publisherSicoobStatus,getPublisherSicoobByWebhook,markPublisherSicoobWebhook,removePublisherSicoob,publisherSicoobWebhookToken} from "./sicoob-accounts.js";
 
 const router=express.Router(),webhooks=express.Router();
 const asyncRoute=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
@@ -22,7 +22,7 @@ router.post("/me",authRequired,asyncRoute(async(req,res)=>{
  if(pfxBase64.length>1500000)return res.status(413).json({error:"Certificado PFX excede o tamanho permitido."});
  const credentials={clientId,clientSecret,pfxBase64,pfxPassword};
  await validateSicoobCredentials(credentials);
- const token=randomBytes(32).toString("hex");
+ const token=publisherSicoobWebhookToken(req.user.sub);
  await savePublisherSicoob(req.user.sub,credentials,pixKey,pixKeyType,token);
  res.status(201).json({connected:true,webhookPending:true,message:"Credenciais validadas. Agora registre o webhook da sua chave Pix.",...(await publisherSicoobStatus(req.user.sub))});
 }));
@@ -31,10 +31,7 @@ router.post("/me/webhook",authRequired,asyncRoute(async(req,res)=>{
  const account=await getPublisherSicoob(req.user.sub);
  if(!account)return res.status(409).json({error:"Conecte primeiro sua conta Sicoob."});
  const base=apiBase();if(!base)return res.status(503).json({error:"PUBLIC_API_URL não configurada no Render."});
- const token=String((await query("SELECT webhook_token_hash FROM publisher_sicoob_accounts WHERE user_id=$1",[req.user.sub])).rows[0]?.webhook_token_hash||"");
- if(!token)return res.status(409).json({error:"Gere novamente a conexão Sicoob para renovar o webhook."});
- const callbackToken=String(req.body?.callbackToken||"");
- if(!callbackToken)return res.status(400).json({error:"Token de callback ausente. Reconecte sua conta para gerar um novo token."});
+ const callbackToken=publisherSicoobWebhookToken(req.user.sub);
  const url=base+"/api/v1/webhooks/sicoob/"+encodeURIComponent(req.user.sub)+"/"+encodeURIComponent(callbackToken);
  await sicoobRequest("put","/webhook/"+encodeURIComponent(account.pixKey),{webhookUrl:url},account);
  await markPublisherSicoobWebhook(req.user.sub);
