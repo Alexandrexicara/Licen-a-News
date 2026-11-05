@@ -41,7 +41,6 @@ A API Pix do Sicoob documenta `GET /pix` para consultar a relação de Pix receb
 - DELETE `/api/v1/sicoob/me` — desconectar.
 - POST `/api/v1/sicoob/orders/:id/charge` — criar cobrança na conta do publicador.
 - GET `/api/v1/sicoob/orders/:id/charge` — consultar cobrança.
-- POST `/api/v1/webhooks/sicoob/:userId/:token` — callback complementar.
 
 ## Configuração e pendências
 
