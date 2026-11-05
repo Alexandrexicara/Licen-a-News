@@ -1,11 +1,11 @@
 import express from "express";
-import {randomBytes,createHash} from "node:crypto";
+import {randomBytes} from "node:crypto";
 import {query,transaction} from "./db.js";
 import {authRequired} from "./auth.js";
 import {sicoobRequest,validateSicoobCredentials,createPixCharge} from "./sicoob.js";
-import {savePublisherSicoob,getPublisherSicoob,publisherSicoobStatus,getPublisherSicoobByWebhook,markPublisherSicoobWebhook,removePublisherSicoob,publisherSicoobWebhookToken} from "./sicoob-accounts.js";
+import {savePublisherSicoob,getPublisherSicoob,publisherSicoobStatus,removePublisherSicoob} from "./sicoob-accounts.js";
 
-const router=express.Router(),webhooks=express.Router();
+const router=express.Router();
 const asyncRoute=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
 const apiBase=()=>String(process.env.PUBLIC_API_URL||"").replace(/\/$/,"");
 const allowedTypes=["journalist","publisher","influencer","both"];
@@ -27,16 +27,6 @@ router.post("/me",authRequired,asyncRoute(async(req,res)=>{
  res.status(201).json({connected:true,webhookPending:true,message:"Credenciais validadas. Agora registre o webhook da sua chave Pix.",...(await publisherSicoobStatus(req.user.sub))});
 }));
 router.delete("/me",authRequired,asyncRoute(async(req,res)=>{await removePublisherSicoob(req.user.sub);res.json({connected:false,message:"Conexão Sicoob removida."});}));
-router.post("/me/webhook",authRequired,asyncRoute(async(req,res)=>{
- const account=await getPublisherSicoob(req.user.sub);
- if(!account)return res.status(409).json({error:"Conecte primeiro sua conta Sicoob."});
- const base=apiBase();if(!base)return res.status(503).json({error:"PUBLIC_API_URL não configurada no Render."});
- const callbackToken=publisherSicoobWebhookToken(req.user.sub);
- const url=base+"/api/v1/webhooks/sicoob/"+encodeURIComponent(req.user.sub)+"/"+encodeURIComponent(callbackToken);
- await sicoobRequest("put","/webhook/"+encodeURIComponent(account.pixKey),{webhookUrl:url},account);
- await markPublisherSicoobWebhook(req.user.sub);
- res.json({registered:true,webhookUrl:url.replace(callbackToken,"••••"),message:"Webhook solicitado ao Sicoob."});
-}));
 router.post("/orders/:id/charge",authRequired,asyncRoute(async(req,res)=>{
  if(process.env.SICOOB_ENABLE_CHARGES!=="true")return res.status(503).json({error:"Cobranças continuam bloqueadas até homologação e validação do webhook mTLS."});
  const orderResult=await query("SELECT * FROM license_orders WHERE id=$1 AND buyer_user_id=$2",[req.params.id,req.user.sub]);
@@ -60,14 +50,6 @@ router.get("/orders/:id/charge",authRequired,asyncRoute(async(req,res)=>{
  if(!account)return res.status(409).json({error:"A conta Sicoob do recebedor não está conectada."});
  const charge=await sicoobRequest("get","/cob/"+encodeURIComponent(r.rows[0].sicoob_txid),undefined,account);
  res.json({payment:charge});
-}));
-webhooks.post("/:userId/:token",asyncRoute(async(req,res)=>{
- const account=await getPublisherSicoobByWebhook(req.params.userId,req.params.token);
- if(!account)return res.status(401).json({error:"Webhook não autorizado."});
- const pixList=Array.isArray(req.body?.pix)?req.body.pix:[];
- let confirmed=0;
- for(const pix of pixList)if(await confirmReceivedPix(req.params.userId,pix))confirmed++;
- res.json({received:true,confirmed});
 }));
 async function confirmReceivedPix(userId,pix){
  if(!pix?.txid||!pix?.endToEndId)return false;
@@ -105,4 +87,4 @@ export async function reconcileSicoobReceipts(){
  return {accounts,confirmed,errors};
 }
 
-export {router as sicoobPublisherRouter,webhooks as sicoobPublisherWebhookRouter};
+export {router as sicoobPublisherRouter};
