@@ -19,11 +19,11 @@ O portal disponibiliza cadastro PF/PJ. O guia do Sicoob de julho de 2024 informa
 - O comprador solicita uma licença e o publicador aprova.
 - O Licença News cria uma cobrança Pix dinâmica (Cob) com TXID único usando as credenciais do próprio publicador e a chave Pix dele.
 - O dinheiro é recebido diretamente na conta Sicoob do publicador. A plataforma não recebe, guarda ou repassa valores.
-- O backend consulta periodicamente o endpoint oficial de Pix recebidos `GET /pix` da conta conectada (janela móvel de 24 horas, a cada 60 segundos).
+- O backend consulta periodicamente o endpoint oficial de Pix recebidos `GET /pix` da conta conectada (janela móvel de 24 horas, a cada 60 segundos). A conciliação não depende de webhook de entrada.
 - A API procura o TXID exato, confere o valor e o E2E ID, marca o pedido como pago e emite a licença uma única vez.
 - O painel do publicador atualiza os pedidos periodicamente e mostra a confirmação do Pix.
 
-A API Pix do Sicoob documenta `GET /pix` para consultar a relação de Pix recebidos e conciliar pagamentos; também disponibiliza webhook por chave. A consulta periódica é o mecanismo principal de confirmação nesta implementação, evitando depender do callback de entrada para a conciliação. Fonte: Manual Sicoob Pix, seção Gerenciamento de Pix Recebidos: https://www.sicoob.com.br/documents/61112012/64877374/Sicoob%2BPix%2B%E2%80%93%2BManual%2Bpara%2Butiliza%C3%A7%C3%A3o%2Bda%2BAPI%2BPix.pdf
+A API Pix do Sicoob documenta `GET /pix` para consultar a relação de Pix recebidos e conciliar pagamentos; também disponibiliza webhook por chave. A consulta periódica é o mecanismo de confirmação nesta implementação; não é necessário expor um endpoint público de webhook para receber o evento. Fonte: Manual Sicoob Pix, seção Gerenciamento de Pix Recebidos: https://www.sicoob.com.br/documents/61112012/64877374/Sicoob%2BPix%2B%E2%80%93%2BManual%2Bpara%2Butiliza%C3%A7%C3%A3o%2Bda%2BAPI%2BPix.pdf
 
 ## Segurança
 
@@ -46,7 +46,7 @@ A API Pix do Sicoob documenta `GET /pix` para consultar a relação de Pix receb
 ## Configuração e pendências
 
 - Aplicar migration `0004_sicoob_per_publisher.sql` depois de 0001, 0002 e 0003.
-- Configurar `SICOOB_ENCRYPTION_KEY` (mínimo 24 caracteres aleatórios) e `PUBLIC_API_URL` no Render.
+- Configurar `SICOOB_ENCRYPTION_KEY` (mínimo 24 caracteres aleatórios) no Render. Não é necessário webhook de entrada para a conciliação automática.
 - Manter `SICOOB_ENABLE_CHARGES=false` até homologar com uma conta real e verificar o formato do certificado PF/PJ, escopos, GET /pix, cobrança dinâmica e conciliação.
 - O polling consulta os últimos 24h a cada 60 segundos. Antes de escalar para muitos publicadores, implementar cursor persistente e paginação completa, além de controle de concorrência distribuído.
 - Nenhuma migration foi aplicada no Neon e nenhum deploy ou pagamento real foi executado por esta alteração.
