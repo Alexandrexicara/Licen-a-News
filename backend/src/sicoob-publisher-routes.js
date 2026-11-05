@@ -7,7 +7,6 @@ import {savePublisherSicoob,getPublisherSicoob,publisherSicoobStatus,removePubli
 
 const router=express.Router();
 const asyncRoute=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
-const apiBase=()=>String(process.env.PUBLIC_API_URL||"").replace(/\/$/,"");
 const allowedTypes=["journalist","publisher","influencer","both"];
 function validPixKey(key,type){
  const digits=key.replace(/\D/g,"");
@@ -22,13 +21,12 @@ router.post("/me",authRequired,asyncRoute(async(req,res)=>{
  if(pfxBase64.length>1500000)return res.status(413).json({error:"Certificado PFX excede o tamanho permitido."});
  const credentials={clientId,clientSecret,pfxBase64,pfxPassword};
  await validateSicoobCredentials(credentials);
- const token=publisherSicoobWebhookToken(req.user.sub);
- await savePublisherSicoob(req.user.sub,credentials,pixKey,pixKeyType,token);
- res.status(201).json({connected:true,webhookPending:true,message:"Credenciais validadas. Agora registre o webhook da sua chave Pix.",...(await publisherSicoobStatus(req.user.sub))});
+ await savePublisherSicoob(req.user.sub,credentials,pixKey,pixKeyType);
+ res.status(201).json({connected:true,message:"Credenciais Sicoob validadas e conexão salva. A consulta automática de Pix já está habilitada.",...(await publisherSicoobStatus(req.user.sub))});
 }));
 router.delete("/me",authRequired,asyncRoute(async(req,res)=>{await removePublisherSicoob(req.user.sub);res.json({connected:false,message:"Conexão Sicoob removida."});}));
 router.post("/orders/:id/charge",authRequired,asyncRoute(async(req,res)=>{
- if(process.env.SICOOB_ENABLE_CHARGES!=="true")return res.status(503).json({error:"Cobranças continuam bloqueadas até homologação e validação do webhook mTLS."});
+ if(process.env.SICOOB_ENABLE_CHARGES!=="true")return res.status(503).json({error:"Cobranças continuam bloqueadas até a homologação do fluxo Pix."});
  const orderResult=await query("SELECT * FROM license_orders WHERE id=$1 AND buyer_user_id=$2",[req.params.id,req.user.sub]);
  if(!orderResult.rowCount)return res.status(404).json({error:"Pedido não encontrado."});
  const order=orderResult.rows[0];
