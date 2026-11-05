@@ -3,7 +3,7 @@ const API=(window.LICENCA_API_URL||"").replace(/\/$/,"");const token=localStorag
  try{
   let d;
   try{d=await api("/api/v1/sicoob/orders/"+id+"/charge",{method:"POST",body:JSON.stringify({})});}
-  catch(sicoobError){if(!/não conectou sua própria conta Sicoob|Cobranças continuam bloqueadas/.test(sicoobError.message))throw sicoobError;d=await api("/api/v1/woovi/licenses/"+id+"/payment",{method:"POST",body:JSON.stringify({})});}
+  catch(sicoobError){if(!/não conectou sua própria conta Sicoob/.test(sicoobError.message))throw sicoobError;d=await api("/api/v1/woovi/licenses/"+id+"/payment",{method:"POST",body:JSON.stringify({})});}
   const p=d.payment||{};
   if(p.brCode)prompt("Copie e pague este Pix. O dinheiro vai diretamente para a conta do jornalista:",p.brCode);
   if(p.paymentLinkUrl)window.open(p.paymentLinkUrl,"_blank","noopener");
