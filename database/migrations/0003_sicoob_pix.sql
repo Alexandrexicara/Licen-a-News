@@ -1,6 +1,11 @@
 BEGIN;
+ALTER TABLE public.license_orders DROP CONSTRAINT IF EXISTS license_orders_status_check;
+ALTER TABLE public.license_orders ADD CONSTRAINT license_orders_status_check CHECK(status IN ('pending','accepted','declined','paid','failed','refunded','disputed','cancelled'));
+ALTER TABLE public.license_orders ADD COLUMN IF NOT EXISTS buyer_message TEXT;
+ALTER TABLE public.license_orders ADD COLUMN IF NOT EXISTS publisher_response TEXT;
+
 CREATE TABLE IF NOT EXISTS public.publisher_pix_accounts(
- user_id TEXT PRIMARY KEY,
+ user_id TEXT PRIMARY KEY REFERENCES public.app_users(id) ON DELETE CASCADE,
  pix_key_encrypted TEXT NOT NULL,
  pix_key_iv TEXT NOT NULL,
  pix_key_tag TEXT NOT NULL,
