@@ -9,7 +9,7 @@ Base local: `http://localhost:4000`. A API usa JSON e, quando indicado, token JW
 - Ofertas de licenciamento: implementadas.
 - Revisão administrativa: endpoints implementados; ainda falta o procedimento seguro de criação do primeiro administrador.
 - Verificação pública de licença: implementada.
-- Pagamentos, split e emissão automática: **desativados**. A solicitação de licença responde HTTP 501 e não inicia cobrança.
+- Pagamento direto entre comprador e publicador: fluxo de solicitação e aprovação implementado; cobrança automática Sicoob permanece bloqueada até homologação.
 - Login Google/GitHub e armazenamento de mídia: ainda não implementados.
 - Chaves de API: geração implementada; autenticação de chamadas usando essas chaves ainda não implementada.
 
@@ -61,7 +61,7 @@ Tipos: `article`, `photo`, `video`, `audio`.
 | Método | Rota | Acesso |
 |---|---|---|
 | GET | `/api/v1/offers` | Público |
-| POST | `/api/v1/licenses/request` | JWT; atualmente retorna 501, pagamentos desativados |
+| POST | `/api/v1/licenses/request` | JWT; cria solicitação de licença |
 | GET | `/api/v1/licenses/verify/:code` | Público |
 
 Finalidades aceitas para uma oferta: `indexing`, `summary`, `snippet`, `reproduction`, `ai_training`.
@@ -91,15 +91,17 @@ Migrações: em banco novo, execute 0001 e depois 0002. No Neon já provisionado
 5. Implementar autenticação por API key, upload seguro e fluxo do provedor de pagamento escolhido.
 6. Validar política de privacidade, termos, titularidade, direitos autorais e regras de repasse.
 
-## Sicoob Pix (preparado; cobrança desativada por padrão)
+## Sicoob Pix por publicador (preparado; cobrança bloqueada até homologação)
 
 | Método | Rota | Acesso |
 |---|---|---|
-| GET | `/api/v1/sicoob/status` | JWT |
-| PUT | `/api/v1/sicoob/me/pix-key` | JWT de jornalista/publicador/influenciador |
-| POST | `/api/v1/sicoob/me/webhook` | JWT de publicador |
+| GET | `/api/v1/sicoob/me` | JWT do publicador |
+| POST | `/api/v1/sicoob/me` | JWT; conecta Client ID, Client Secret, PFX/P12 e chave Pix próprios |
+| DELETE | `/api/v1/sicoob/me` | JWT; desconecta |
 | POST | `/api/v1/sicoob/orders/:id/charge` | JWT do comprador; pedido aceito |
 | GET | `/api/v1/sicoob/orders/:id/charge` | JWT de comprador ou publicador |
-| POST | `/api/v1/webhooks/sicoob/:token` | Callback Sicoob; token aleatório e mTLS na borda |
+| POST | `/api/v1/webhooks/sicoob/:userId/:token` | Callback complementar |
 
-O endpoint de cobrança retorna 503 enquanto `SICOOB_ENABLE_CHARGES` não for `true`. A licença é emitida após o webhook confirmar TXID e valor correspondentes ao pedido. Consulte [SICOOB-INTEGRATION.md](./SICOOB-INTEGRATION.md) antes de configurar produção.
+Cada publicador conecta sua própria conta Sicoob e suas próprias credenciais. O backend consulta `GET /pix` a cada 60 segundos, identifica o TXID do pedido, confere valor e E2E ID, marca como pago e emite a licença. O dinheiro é recebido diretamente pelo publicador; a plataforma não recebe nem repassa valores.
+
+O endpoint de cobrança retorna 503 enquanto `SICOOB_ENABLE_CHARGES` não for `true`. Consulte [SICOOB-INTEGRATION.md](./SICOOB-INTEGRATION.md). A migration `0004_sicoob_per_publisher.sql` precisa ser aplicada após 0003.
