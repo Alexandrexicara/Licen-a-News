@@ -90,3 +90,16 @@ Migrações: em banco novo, execute 0001 e depois 0002. No Neon já provisionado
 4. Criar o primeiro administrador por procedimento operacional restrito, sem endpoint público de promoção.
 5. Implementar autenticação por API key, upload seguro e fluxo do provedor de pagamento escolhido.
 6. Validar política de privacidade, termos, titularidade, direitos autorais e regras de repasse.
+
+## Sicoob Pix (preparado; cobrança desativada por padrão)
+
+| Método | Rota | Acesso |
+|---|---|---|
+| GET | `/api/v1/sicoob/status` | JWT |
+| PUT | `/api/v1/sicoob/me/pix-key` | JWT de jornalista/publicador/influenciador |
+| POST | `/api/v1/sicoob/me/webhook` | JWT de publicador |
+| POST | `/api/v1/sicoob/orders/:id/charge` | JWT do comprador; pedido aceito |
+| GET | `/api/v1/sicoob/orders/:id/charge` | JWT de comprador ou publicador |
+| POST | `/api/v1/webhooks/sicoob/:token` | Callback Sicoob; token aleatório e mTLS na borda |
+
+O endpoint de cobrança retorna 503 enquanto `SICOOB_ENABLE_CHARGES` não for `true`. A licença é emitida após o webhook confirmar TXID e valor correspondentes ao pedido. Consulte [SICOOB-INTEGRATION.md](./SICOOB-INTEGRATION.md) antes de configurar produção.
