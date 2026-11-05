@@ -108,7 +108,7 @@ app.post("/api/v1/licenses/request",authRequired,asyncRoute(async(req,res)=>{
  const {offerId,requestMessage="",termsAccepted}=req.body||{};
  if(!offerId||termsAccepted!==true)return res.status(400).json({error:"Informe a oferta e aceite expressamente os termos."});
  const order=await transaction(async client=>{
-  const offer=await client.query("SELECT o.*,c.title,c.status AS content_status FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.id=$1 AND o.active=true AND (EXISTS(SELECT 1 FROM publisher_pix_accounts pa WHERE pa.user_id=o.owner_user_id AND pa.active=true) OR EXISTS(SELECT 1 FROM user_woovi_accounts wa WHERE wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL)) FOR UPDATE OF o",[offerId]);
+  const offer=await client.query("SELECT o.*,c.title,c.status AS content_status FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.id=$1 AND o.active=true AND (EXISTS(SELECT 1 FROM publisher_sicoob_accounts pa WHERE pa.user_id=o.owner_user_id AND pa.active=true) OR EXISTS(SELECT 1 FROM user_woovi_accounts wa WHERE wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL)) FOR UPDATE OF o",[offerId]);
   if(!offer.rowCount||offer.rows[0].content_status!=="approved")throw Object.assign(new Error("Oferta indisponível."),{status:404});
   const o=offer.rows[0];
   if(o.owner_user_id===req.user.sub)throw Object.assign(new Error("Você não pode solicitar licença do seu próprio conteúdo."),{status:400});
