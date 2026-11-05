@@ -66,22 +66,43 @@ webhooks.post("/:userId/:token",asyncRoute(async(req,res)=>{
  if(!account)return res.status(401).json({error:"Webhook não autorizado."});
  const pixList=Array.isArray(req.body?.pix)?req.body.pix:[];
  let confirmed=0;
- for(const pix of pixList){
-  if(!pix.txid||!pix.endToEndId)continue;
-  await transaction(async client=>{
-   const found=await client.query("SELECT id,status,gross_amount_cents,publisher_user_id FROM license_orders WHERE sicoob_txid=$1 AND publisher_user_id=$2 FOR UPDATE",[String(pix.txid),req.params.userId]);
-   if(!found.rowCount||found.rows[0].status==="paid")return;
-   if(Math.round(Number(pix.valor)*100)!==Number(found.rows[0].gross_amount_cents))throw new Error("Valor Pix recebido não corresponde ao pedido.");
-   const orderId=found.rows[0].id;
-   await client.query("UPDATE license_orders SET status='paid',paid_at=now(),sicoob_status='paid',sicoob_end_to_end_id=$2,sicoob_payment_confirmed_at=now(),updated_at=now() WHERE id=$1",[orderId,String(pix.endToEndId)]);
-   const o=await client.query("SELECT o.*,f.content_id,f.purpose,f.territory,f.duration_days FROM license_orders o JOIN license_offers f ON f.id=o.offer_id WHERE o.id=$1",[orderId]);
-   if(!o.rowCount)return;
-   const order=o.rows[0],code="LN-"+randomBytes(12).toString("hex").toUpperCase();
-   await client.query("INSERT INTO issued_licenses(order_id,license_code,content_id,owner_user_id,buyer_user_id,purpose,territory,starts_at,expires_at,status) VALUES($1,$2,$3,$4,$5,$6,$7,now(),now()+($8::int*interval '1 day'),'active') ON CONFLICT(order_id) DO NOTHING",[order.id,code,order.content_id,order.publisher_user_id,order.buyer_user_id,order.purpose,order.territory,order.duration_days]);
-   await client.query("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES($1,'license.payment_confirmed.sicoob','license_order',$2,$3::jsonb)",[order.publisher_user_id,String(order.id),JSON.stringify({txid:pix.txid,endToEndId:pix.endToEndId,recipient:order.publisher_user_id})]);
-   confirmed++;
-  });
- }
+ for(const pix of pixList)if(await confirmReceivedPix(req.params.userId,pix))confirmed++;
  res.json({received:true,confirmed});
 }));
+async function confirmReceivedPix(userId,pix){
+ if(!pix?.txid||!pix?.endToEndId)return false;
+ return transaction(async client=>{
+  const found=await client.query("SELECT id,status,gross_amount_cents,publisher_user_id FROM license_orders WHERE sicoob_txid=$1 AND publisher_user_id=$2 FOR UPDATE",[String(pix.txid),userId]);
+  if(!found.rowCount||found.rows[0].status==="paid")return false;
+  if(Math.round(Number(pix.valor)*100)!==Number(found.rows[0].gross_amount_cents))return false;
+  const orderId=found.rows[0].id;
+  await client.query("UPDATE license_orders SET status='paid',paid_at=now(),sicoob_status='paid',sicoob_end_to_end_id=$2,sicoob_payment_confirmed_at=now(),updated_at=now() WHERE id=$1",[orderId,String(pix.endToEndId)]);
+  const o=await client.query("SELECT o.*,f.content_id,f.purpose,f.territory,f.duration_days FROM license_orders o JOIN license_offers f ON f.id=o.offer_id WHERE o.id=$1",[orderId]);
+  if(!o.rowCount)return false;
+  const order=o.rows[0],code="LN-"+randomBytes(12).toString("hex").toUpperCase();
+  await client.query("INSERT INTO issued_licenses(order_id,license_code,content_id,owner_user_id,buyer_user_id,purpose,territory,starts_at,expires_at,status) VALUES($1,$2,$3,$4,$5,$6,$7,now(),now()+($8::int*interval '1 day'),'active') ON CONFLICT(order_id) DO NOTHING",[order.id,code,order.content_id,order.publisher_user_id,order.buyer_user_id,order.purpose,order.territory,order.duration_days]);
+  await client.query("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,details) VALUES($1,'license.payment_confirmed.sicoob','license_order',$2,$3::jsonb)",[order.publisher_user_id,String(order.id),JSON.stringify({txid:pix.txid,endToEndId:pix.endToEndId,recipient:order.publisher_user_id,confirmation:"sicoob_api_pix_query"})]);
+  return true;
+ });
+}
+let reconciliationRunning=false;
+export async function reconcileSicoobReceipts(){
+ if(reconciliationRunning)return {skipped:true,confirmed:0};
+ reconciliationRunning=true;let confirmed=0,accounts=0,errors=0;
+ try{
+  const users=await query("SELECT user_id FROM publisher_sicoob_accounts WHERE active=true");
+  for(const row of users.rows){
+   try{
+    const account=await getPublisherSicoob(row.user_id);if(!account)continue;accounts++;
+    const end=new Date(),start=new Date(end.getTime()-24*60*60*1000);
+    const params=new URLSearchParams({inicio:start.toISOString(),fim:end.toISOString(),"paginacao.paginaAtual":"0","paginacao.itensPorPagina":"100"});
+    const result=await sicoobRequest("get","/pix?"+params.toString(),undefined,account);
+    const received=Array.isArray(result?.pix)?result.pix:[];
+    for(const pix of received){if(await confirmReceivedPix(row.user_id,pix))confirmed++;}
+   }catch(error){errors++;console.error("Sicoob reconciliation failed for publisher",row.user_id,String(error?.message||error).slice(0,300));}
+  }
+ }finally{reconciliationRunning=false;}
+ return {accounts,confirmed,errors};
+}
+
 export {router as sicoobPublisherRouter,webhooks as sicoobPublisherWebhookRouter};
