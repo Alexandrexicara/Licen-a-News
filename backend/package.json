@@ -14,7 +14,8 @@
     "express": "^4.21.2",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "axios": "^1.7.9"
   },
   "devDependencies": {}
 }

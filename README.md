@@ -17,7 +17,7 @@ Marketplace de licenciamento de conteúdo jornalístico e de criadores.
 - **Frontend:** Netlify (site estático/SPA).
 - **Backend:** Render (API Node.js).
 - **Banco:** Neon PostgreSQL, projeto `licenca-news`, região São Paulo, banco `licenca_news`, branch `main`.
-- **Pagamentos:** fora do escopo desta etapa. Nenhum gateway deve ser ativado até a escolha do provedor e do fluxo jurídico/financeiro.
+- **Pagamentos:** integração Sicoob Pix preparada em branch separada; cobranças permanecem desativadas até cada publicador conectar suas credenciais mTLS, cadastrar sua chave recebedora e concluir a homologação.
 
 ## Banco de dados
 
@@ -110,7 +110,9 @@ Frontend: servir a pasta `frontend` com um servidor estático local. O proxy de 
 - A integração de autenticação externa Google/GitHub não está implementada nesta primeira versão.
 - Upload de mídia precisa de serviço de armazenamento de objetos antes da produção.
 - Revisão editorial usa endpoints administrativos; a criação inicial do primeiro administrador deve ser feita por procedimento seguro no banco.
-- Nenhuma cobrança, split ou transferência Pix está habilitada.
+- Sicoob Pix por publicador: cada jornalista/veículo conecta sua própria conta, Client ID, Client Secret, certificado PFX e chave Pix no painel; o backend cifra as credenciais, gera cobranças com TXID e consulta Pix recebidos pela API Sicoob para confirmar o pagamento e emitir a licença. A conciliação automática está preparada na branch `feature/sicoob-pix-integration`; cobranças permanecem bloqueadas por padrão até homologação.
+- As migrations `0003_sicoob_pix.sql` e `0004_sicoob_per_publisher.sql` precisam ser aplicadas após confirmar o estado das migrations 0001/0002 no Neon.
+- Cada publicador usa credenciais próprias do Sicoob vinculadas à sua conta. A plataforma não recebe nem repassa os valores. A confirmação automática usa a consulta de Pix recebidos (GET /pix) autenticada com as credenciais do próprio recebedor e concilia pelo TXID.
 - Não declarar produção pronta antes de aplicar a migração 0002, configurar segredos, executar testes automatizados e validar os fluxos completos.
 
 
