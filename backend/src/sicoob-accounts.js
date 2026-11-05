@@ -1,4 +1,4 @@
-import {createCipheriv,createDecipheriv,createHash,randomBytes} from "node:crypto";
+import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes} from "node:crypto";
 import {query} from "./db.js";
 function key(){const secret=process.env.SICOOB_ENCRYPTION_KEY;if(!secret||secret.length<24)throw new Error("Configure SICOOB_ENCRYPTION_KEY com pelo menos 24 caracteres no Render.");return createHash("sha256").update(secret).digest();}
 function seal(value,iv){const cipher=createCipheriv("aes-256-gcm",key(),iv);const encrypted=Buffer.concat([cipher.update(String(value),"utf8"),cipher.final()]);return {value:encrypted.toString("base64"),tag:cipher.getAuthTag().toString("base64")};}
@@ -29,3 +29,5 @@ export async function getPublisherSicoobByWebhook(userId,token){
 }
 export async function markPublisherSicoobWebhook(userId){await query("UPDATE publisher_sicoob_accounts SET webhook_registered_at=now(),updated_at=now() WHERE user_id=$1",[userId]);}
 export async function removePublisherSicoob(userId){await query("UPDATE publisher_sicoob_accounts SET active=false,webhook_token_hash=NULL,updated_at=now() WHERE user_id=$1",[userId]);}
+
+export function publisherSicoobWebhookToken(userId){const secret=process.env.SICOOB_ENCRYPTION_KEY;if(!secret)throw new Error("SICOOB_ENCRYPTION_KEY não configurada.");return createHmac("sha256",secret).update("licenca-news-sicoob-webhook:"+userId).digest("hex");}
