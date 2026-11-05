@@ -3,7 +3,7 @@ import {query} from "./db.js";
 function key(){const secret=process.env.SICOOB_ENCRYPTION_KEY;if(!secret||secret.length<24)throw new Error("Configure SICOOB_ENCRYPTION_KEY com pelo menos 24 caracteres no Render.");return createHash("sha256").update(secret).digest();}
 function seal(value){const iv=randomBytes(12),cipher=createCipheriv("aes-256-gcm",key(),iv),encrypted=Buffer.concat([cipher.update(String(value),"utf8"),cipher.final()]);return {value:encrypted.toString("base64"),iv:iv.toString("base64"),tag:cipher.getAuthTag().toString("base64")};}
 function open(value,iv,tag){const decipher=createDecipheriv("aes-256-gcm",key(),Buffer.from(iv,"base64"));decipher.setAuthTag(Buffer.from(tag,"base64"));return Buffer.concat([decipher.update(Buffer.from(value,"base64")),decipher.final()]).toString("utf8");}
-export async function savePublisherSicoob(userId,credentials,pixKey,pixKeyType,webhookToken){
+export async function savePublisherSicoob(userId,credentials,pixKey,pixKeyType){
  const fields={clientId:seal(credentials.clientId),clientSecret:seal(credentials.clientSecret),pfxBase64:seal(credentials.pfxBase64),pfxPassword:seal(credentials.pfxPassword||""),pixKey:seal(pixKey)};
  
  await query(`INSERT INTO publisher_sicoob_accounts(user_id,client_id_encrypted,client_secret_encrypted,pfx_encrypted,pfx_password_encrypted,pix_key_encrypted,pix_key_type,client_id_iv,client_secret_iv,pfx_iv,pfx_password_iv,pix_key_iv,client_id_tag,client_secret_tag,pfx_tag,pfx_password_tag,pix_key_tag,connected_at,last_verified_at,active,updated_at)
@@ -19,6 +19,6 @@ export async function getPublisherSicoob(userId){
 export async function publisherSicoobStatus(userId){
  const r=await query("SELECT pix_key_type,connected_at,last_verified_at,active FROM publisher_sicoob_accounts WHERE user_id=$1",[userId]);
  if(!r.rowCount||!r.rows[0].active)return {connected:false};
- return {connected:true,pixKeyType:r.rows[0].pix_key_type,connectedAt:r.rows[0].connected_at,lastVerifiedAt:r.rows[0].last_verified_at,webhookRegistered:Boolean(r.rows[0].webhook_registered_at)};
+ return {connected:true,pixKeyType:r.rows[0].pix_key_type,connectedAt:r.rows[0].connected_at,lastVerifiedAt:r.rows[0].last_verified_at};
 }
-export async function removePublisherSicoob(userId){await query("UPDATE publisher_sicoob_accounts SET active=false,webhook_token_hash=NULL,updated_at=now() WHERE user_id=$1",[userId]);}
+export async function removePublisherSicoob(userId){await query("UPDATE publisher_sicoob_accounts SET active=false,updated_at=now() WHERE user_id=$1",[userId]);}
