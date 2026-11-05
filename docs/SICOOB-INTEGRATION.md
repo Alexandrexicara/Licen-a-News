@@ -1,70 +1,52 @@
-# Integração Sicoob Pix — Licença News
+# Sicoob Pix por publicador — Licença News
 
-## Implementado nesta branch
+## Modelo de conexão
 
-- Cliente HTTP do Sicoob com OAuth 2.0 Client Credentials, certificado mTLS PFX e cache de token conforme expires_in.
-- API Pix Recebimentos: criação e consulta de cobrança imediata (PUT/GET /cob/{txid}).
-- Cadastro de chave Pix do publicador com criptografia AES-256-GCM no PostgreSQL.
-- Registro de webhook Pix por chave.
-- Recepção idempotente por estado do pedido, conferência do TXID e do valor recebido, atualização do pedido para pago e emissão automática da licença com trilha de auditoria.
-- A cobrança é bloqueada por padrão: SICOOB_ENABLE_CHARGES=false.
+Cada jornalista, jornal, editora ou influenciador conecta a própria conta Sicoob no painel Minha área. O Licença News não usa uma única credencial da plataforma para acessar contas de terceiros.
 
-## Endpoints internos
+1. O publicador precisa ter conta Sicoob ativa e ser cooperado para solicitar o aplicativo de produção, conforme as regras do banco.
+2. Faz cadastro no Portal Developers Sicoob como Pessoa Física ou Jurídica.
+3. Cria um aplicativo com Pix Recebimentos e obtém Client ID, Client Secret e certificado PFX/P12 aceito pelo banco.
+4. Informa essas credenciais e sua chave Pix no painel Licença News.
+5. O backend valida o token OAuth/mTLS e armazena cada credencial cifrada por usuário no PostgreSQL.
 
-- GET /api/v1/sicoob/status — estado da configuração (JWT).
-- PUT /api/v1/sicoob/me/pix-key — cadastrar/atualizar chave Pix do titular (JWT).
-- POST /api/v1/sicoob/me/webhook — registrar URL de webhook da chave Pix no Sicoob (JWT).
-- POST /api/v1/sicoob/orders/:id/charge — criar cobrança para pedido aceito (JWT).
-- GET /api/v1/sicoob/orders/:id/charge — consultar cobrança do pedido (JWT).
-- POST /api/v1/webhooks/sicoob/:token — receber notificações do Sicoob.
+Portal: https://developers.sicoob.com.br/portal/cadastro
 
-## Endpoints oficiais Sicoob Pix
+O portal disponibiliza cadastro PF/PJ. A liberação de aplicativo de produção depende de ser cooperado e dos requisitos do Sicoob; cadastro no portal, sozinho, não garante produção. Confirme com a cooperativa o tipo de certificado aceito para CPF e os escopos Pix Recebimentos liberados.
 
-- OAuth: https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token
-- API Pix v2: https://api.sicoob.com.br/pix/api/v2
-- Cobrança imediata: PUT /cob/{txid}; consulta: GET /cob/{txid}
-- Webhook por chave Pix: PUT /webhook/{chave}
+## Como a confirmação automática funciona
 
-A integração usa TLS 1.2+, OAuth 2.0 Client Credentials, mTLS com certificado X.509 e header client_id. O Sicoob exige canal mTLS também nas notificações de webhook. Consulte o Portal Developers para os escopos e parâmetros liberados para a aplicação específica.
+- O comprador solicita uma licença e o publicador aprova.
+- O Licença News cria uma cobrança Pix dinâmica (Cob) com TXID único usando as credenciais do próprio publicador e a chave Pix dele.
+- O dinheiro é recebido diretamente na conta Sicoob do publicador. A plataforma não recebe, guarda ou repassa valores.
+- O backend consulta periodicamente o endpoint oficial de Pix recebidos `GET /pix` da conta conectada (janela móvel de 24 horas, a cada 60 segundos).
+- A API procura o TXID exato, confere o valor e o E2E ID, marca o pedido como pago e emite a licença uma única vez.
+- O painel do publicador atualiza os pedidos periodicamente e mostra a confirmação do Pix.
 
-## Variáveis de ambiente no Render
+A API Pix do Sicoob documenta `GET /pix` para consultar a relação de Pix recebidos e conciliar pagamentos; também disponibiliza webhook por chave. A consulta periódica é o mecanismo principal de confirmação nesta implementação, evitando depender do callback de entrada para a conciliação. Fonte: Manual Sicoob Pix, seção Gerenciamento de Pix Recebidos: https://www.sicoob.com.br/documents/61112012/64877374/Sicoob%2BPix%2B%E2%80%93%2BManual%2Bpara%2Butiliza%C3%A7%C3%A3o%2Bda%2BAPI%2BPix.pdf
 
-```env
-SICOOB_ENVIRONMENT=production
-SICOOB_AUTH_URL=https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token
-SICOOB_API_BASE_URL=https://api.sicoob.com.br/pix/api/v2
-SICOOB_CLIENT_ID=
-SICOOB_CLIENT_SECRET=
-SICOOB_MTLS_PFX_BASE64=
-SICOOB_MTLS_PFX_PASSWORD=
-SICOOB_SCOPES=cob.read cob.write pix.read webhook.write webhook.read
-SICOOB_ENCRYPTION_KEY=
-SICOOB_PIX_EXPIRATION_SECONDS=3600
-SICOOB_WEBHOOK_TOKEN=
-SICOOB_ENABLE_CHARGES=false
-PUBLIC_API_URL=https://licenca-news-api.onrender.com
-```
+## Segurança
 
-- SICOOB_MTLS_PFX_BASE64: conteúdo Base64 do PFX da aplicação.
-- SICOOB_ENCRYPTION_KEY: segredo aleatório forte e exclusivo para criptografar as chaves Pix dos publicadores.
-- SICOOB_WEBHOOK_TOKEN: segredo aleatório longo usado no caminho da URL de callback.
-- Não commitar segredos, PFX ou senhas no GitHub.
+- Credenciais, segredo e PFX são criptografados com AES-256-GCM usando `SICOOB_ENCRYPTION_KEY`.
+- Nunca enviar credenciais ou certificados ao GitHub nem armazená-los no frontend.
+- O certificado é enviado uma vez por HTTPS ao backend e fica cifrado no banco.
+- Cada cobrança usa a chave Pix e as credenciais do próprio publicador.
+- O TXID é único; a confirmação verifica recebedor, TXID, valor e E2E ID.
+- A emissão de licença é protegida por transação e restrição única por pedido.
 
-## Banco de dados
+## Rotas
 
-Aplicar `database/migrations/0003_sicoob_pix.sql` depois das migrations 0001 e 0002. A migration 0001 já foi aplicada no Neon existente; a 0002 estava pendente conforme o README anterior. Confirmar o histórico do Neon antes de aplicar qualquer migration, e aplicar 0002 antes de 0003.
+- GET `/api/v1/sicoob/me` — status da conexão.
+- POST `/api/v1/sicoob/me` — validar e conectar credenciais próprias.
+- DELETE `/api/v1/sicoob/me` — desconectar.
+- POST `/api/v1/sicoob/orders/:id/charge` — criar cobrança na conta do publicador.
+- GET `/api/v1/sicoob/orders/:id/charge` — consultar cobrança.
+- POST `/api/v1/webhooks/sicoob/:userId/:token` — callback complementar.
 
-## Importante sobre o modelo de recebimento
+## Configuração e pendências
 
-A cobrança Pix só pode ser emitida para uma chave Pix que o Sicoob aceite na conta vinculada ao aplicativo/certificado usado na API. Uma chave Pix de outro banco ou de outra titularidade pode ser recusada. Se cada jornalista/veículo receber diretamente em sua própria conta Sicoob, cada recebedor poderá precisar de sua própria aplicação/credenciais/certificado e autorização; uma única credencial da plataforma não deve ser presumida como autorização para cobrar em contas de terceiros.
-
-Pix Recebimentos não faz split nem Pix Out. Esta implementação não transfere valores para jornalistas nem cobra comissão da plataforma. Ela cria cobrança Pix e, após confirmação válida, atualiza o pedido e emite a licença. A titularidade da chave e o fluxo jurídico/comercial de pagamento devem ser confirmados antes de habilitar cobranças.
-
-## Requisitos para produção
-
-1. Aplicar migrations 0002 e 0003, verificando primeiro o estado real do Neon.
-2. Configurar credenciais e certificado no Render.
-3. Configurar uma camada de entrada que valide mTLS nos callbacks Sicoob antes de encaminhar ao Render. O token aleatório na URL é uma defesa adicional, não substitui mTLS.
-4. Confirmar escopos, webhook, chave Pix e autorização do aplicativo no Portal Developers.
-5. Testar criação, consulta, pagamento real controlado, webhook duplicado, valor divergente e emissão única da licença.
-6. Somente então alterar SICOOB_ENABLE_CHARGES para true.
+- Aplicar migration `0004_sicoob_per_publisher.sql` depois de 0001, 0002 e 0003.
+- Configurar `SICOOB_ENCRYPTION_KEY` (mínimo 24 caracteres aleatórios) e `PUBLIC_API_URL` no Render.
+- Manter `SICOOB_ENABLE_CHARGES=false` até homologar com uma conta real e verificar o formato do certificado PF/PJ, escopos, GET /pix, cobrança dinâmica e conciliação.
+- O polling consulta os últimos 24h a cada 60 segundos. Antes de escalar para muitos publicadores, implementar cursor persistente e paginação completa, além de controle de concorrência distribuído.
+- Nenhuma migration foi aplicada no Neon e nenhum deploy ou pagamento real foi executado por esta alteração.
