@@ -53,7 +53,7 @@ async function confirmReceivedPix(userId,pix){
  if(!pix?.txid||!pix?.endToEndId)return false;
  return transaction(async client=>{
   const found=await client.query("SELECT id,status,gross_amount_cents,publisher_user_id FROM license_orders WHERE sicoob_txid=$1 AND publisher_user_id=$2 FOR UPDATE",[String(pix.txid),userId]);
-  if(!found.rowCount||found.rows[0].status==="paid")return false;
+  if(!found.rowCount||found.rows[0].status!=="accepted")return false;
   if(Math.round(Number(pix.valor)*100)!==Number(found.rows[0].gross_amount_cents))return false;
   const orderId=found.rows[0].id;
   await client.query("UPDATE license_orders SET status='paid',paid_at=now(),sicoob_status='paid',sicoob_end_to_end_id=$2,sicoob_payment_confirmed_at=now(),updated_at=now() WHERE id=$1",[orderId,String(pix.endToEndId)]);
