@@ -2,3 +2,4 @@
 .woovi-consent{display:flex;align-items:flex-start;gap:10px;margin:18px 0;color:#33435c;font-size:.9rem;line-height:1.55}.woovi-consent input{width:auto;min-width:18px;margin-top:3px;accent-color:#315de8}.account-panel h3{margin:22px 0 8px;font-size:1rem;color:#243550}.account-actions button:disabled{opacity:.5;cursor:not-allowed}
 
 .sicoob-steps{background:#f4f7fc;border:1px solid #e1e8f2;border-radius:12px;padding:15px 18px;margin:16px 0;color:#40516b;font-size:.9rem;line-height:1.6}.sicoob-steps ol{padding-left:22px}.sicoob-steps a{color:#315de8;font-weight:700}.sicoob-steps small{display:block;color:#8a5422;background:#fff8e9;padding:10px;border-radius:8px}.sicoob-steps strong{color:#1b2d49}
+.payment-confirmed{color:#13764b!important;font-weight:700;background:#e8f7ef;padding:9px 12px;border-radius:8px}
