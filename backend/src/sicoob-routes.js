@@ -1,5 +1,5 @@
 import express from "express";
-import {randomBytes,timingSafeEqual} from "node:crypto";
+import {randomBytes,timingSafeEqual,createDecipheriv,createCipheriv,createHash} from "node:crypto";
 import {query,transaction} from "./db.js";
 import {authRequired} from "./auth.js";
 import {sicoobStatus,createPixCharge,sicoobRequest} from "./sicoob.js";
@@ -24,6 +24,18 @@ router.post("/orders/:id/charge",authRequired,asyncRoute(async(req,res)=>{
  WHERE id=$1 AND buyer_user_id=$4 AND status='accepted' AND sicoob_txid IS NULL`,[order.id,txid,JSON.stringify(charge),req.user.sub]);
  res.status(201).json({payment:{txid,status:charge.status||"ATIVA",brCode:charge.pixCopiaECola||charge.qrcode||null,charge}});
 }));
+router.post("/me/webhook",authRequired,asyncRoute(async(req,res)=>{
+ if(!sicoobStatus().configured)return res.status(503).json({error:"Configure primeiro a API Sicoob."});
+ const r=await query("SELECT * FROM publisher_pix_accounts WHERE user_id=$1 AND active=true",[req.user.sub]);
+ if(!r.rowCount)return res.status(409).json({error:"Cadastre primeiro a chave Pix do titular."});
+ const pixKey=decryptPixKey(r.rows[0]);const secret=String(process.env.SICOOB_WEBHOOK_TOKEN||"");
+ if(!secret)return res.status(503).json({error:"SICOOB_WEBHOOK_TOKEN não configurado."});
+ const base=String(process.env.PUBLIC_API_URL||"").replace(/\\/$/,"");
+ if(!base)return res.status(503).json({error:"PUBLIC_API_URL não configurada."});
+ const url=base+"/api/v1/webhooks/sicoob/"+encodeURIComponent(secret);
+ const result=await sicoobRequest("put","/webhook/"+encodeURIComponent(pixKey),{webhookUrl:url});
+ res.json({registered:true,webhookUrl:url.replace(secret,"••••"),provider:result});
+}));
 router.get("/orders/:id/charge",authRequired,asyncRoute(async(req,res)=>{
  const r=await query("SELECT sicoob_txid,sicoob_status,sicoob_payload FROM license_orders WHERE id=$1 AND (buyer_user_id=$2 OR publisher_user_id=$2)",[req.params.id,req.user.sub]);
  if(!r.rowCount||!r.rows[0].sicoob_txid)return res.status(404).json({error:"Cobrança não encontrada."});
@@ -31,19 +43,17 @@ router.get("/orders/:id/charge",authRequired,asyncRoute(async(req,res)=>{
  res.json({payment:charge});
 }));
 function decryptPixKey(row){
- const {createDecipheriv}=awaitCrypto;
  const d=createDecipheriv("aes-256-gcm",encryptionKey(),Buffer.from(row.pix_key_iv,"base64"));d.setAuthTag(Buffer.from(row.pix_key_tag,"base64"));
  return Buffer.concat([d.update(Buffer.from(row.pix_key_encrypted,"base64")),d.final()]).toString("utf8");
 }
-const awaitCrypto=await import("node:crypto");
 function encryptionKey(){const v=process.env.SICOOB_ENCRYPTION_KEY;if(!v)throw new Error("SICOOB_ENCRYPTION_KEY não configurada.");return awaitCrypto.createHash("sha256").update(v).digest();}
 router.put("/me/pix-key",authRequired,asyncRoute(async(req,res)=>{
  const {pixKey,pixKeyType}=req.body||{};const key=String(pixKey||"").trim();
  if(!key||!["CPF","CNPJ","EMAIL","PHONE","EVP"].includes(String(pixKeyType||"").toUpperCase()))return res.status(400).json({error:"Informe uma chave Pix e o tipo (CPF, CNPJ, EMAIL, PHONE ou EVP)."});
- const {createCipheriv,randomBytes,createHash}=await import("node:crypto");const iv=randomBytes(12),cipher=createCipheriv("aes-256-gcm",encryptionKey(),iv);const encrypted=Buffer.concat([cipher.update(key,"utf8"),cipher.final()]);
+ const iv=randomBytes(12),cipher=createCipheriv("aes-256-gcm",encryptionKey(),iv);const encrypted=Buffer.concat([cipher.update(key,"utf8"),cipher.final()]);
  await query(`INSERT INTO publisher_pix_accounts(user_id,pix_key_encrypted,pix_key_iv,pix_key_tag,pix_key_type,active,updated_at)
  VALUES($1,$2,$3,$4,$5,true,now()) ON CONFLICT(user_id) DO UPDATE SET pix_key_encrypted=EXCLUDED.pix_key_encrypted,pix_key_iv=EXCLUDED.pix_key_iv,pix_key_tag=EXCLUDED.pix_key_tag,pix_key_type=EXCLUDED.pix_key_type,active=true,updated_at=now()`,[req.user.sub,encrypted.toString("base64"),iv.toString("base64"),cipher.getAuthTag().toString("base64"),String(pixKeyType).toUpperCase()]);
- res.json({saved:true,pixKeyType:String(pixKeyType).toUpperCase(),pixKeyHint:key.slice(-4).padStart(Math.min(key.length,4),"•")});
+ res.json({saved:true,pixKeyType:type,pixKeyHint:"••••"+key.slice(-4)});
 }));
 webhooks.post("/sicoob",asyncRoute(async(req,res)=>{
  const expected=Buffer.from(process.env.SICOOB_WEBHOOK_TOKEN||"");const supplied=Buffer.from(String(req.headers["x-sicoob-webhook-token"]||""));
