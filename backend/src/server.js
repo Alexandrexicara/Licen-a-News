@@ -9,14 +9,13 @@ import { authRequired,adminRequired,signToken,optionalAuth } from "./auth.js";
 import { saveElevenLabsKey,getElevenLabsKeyStatus,removeElevenLabsKey } from "./user-keys.js";
 import assistantRouter from "./assistant.js";
 import { wooviRouter, wooviWebhookRouter } from "./woovi-routes.js";
-import { sicoobPublisherRouter, sicoobPublisherWebhookRouter, reconcileSicoobReceipts } from "./sicoob-publisher-routes.js";
+import { sicoobPublisherRouter, reconcileSicoobReceipts } from "./sicoob-publisher-routes.js";
 
 const app=express();
 app.use(helmet());
 app.use(cors({origin:(process.env.CORS_ORIGIN||"").split(",").filter(Boolean),credentials:true}));
 app.use(express.json({limit:"2mb",verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf);}}));
 app.use("/api/v1/webhooks/woovi",wooviWebhookRouter);
-app.use("/api/v1/webhooks/sicoob",sicoobPublisherWebhookRouter);
 app.use("/api/v1/woovi",authRequired,wooviRouter);
 app.use("/api/v1/sicoob",sicoobPublisherRouter);
 app.use("/api/v1/assistant",optionalAuth,assistantRouter);
