@@ -91,7 +91,7 @@ app.post("/api/v1/content",authRequired,asyncRoute(async(req,res)=>{
 }));
 app.get("/api/v1/content/mine",authRequired,asyncRoute(async(req,res)=>{const r=await query("SELECT * FROM content_items WHERE owner_user_id=$1 ORDER BY created_at DESC",[req.user.sub]);res.json({items:r.rows});}));
 app.post("/api/v1/content/:id/offers",authRequired,asyncRoute(async(req,res)=>{
- const paymentSetup=await query(`SELECT 1 WHERE EXISTS(SELECT 1 FROM publisher_pix_accounts WHERE user_id=$1 AND active=true)
+ const paymentSetup=await query(`SELECT 1 WHERE EXISTS(SELECT 1 FROM publisher_sicoob_accounts WHERE user_id=$1 AND active=true)
  OR EXISTS(SELECT 1 FROM user_woovi_accounts WHERE user_id=$1 AND consented_at IS NOT NULL AND payout_permission_status='verified' AND payout_permission_verified_at IS NOT NULL)`,[req.user.sub]);
  if(!paymentSetup.rowCount)return res.status(403).json({error:"Cadastre uma chave Pix Sicoob ou conclua a autorização de recebimentos existente.",code:"PIX_RECEIVER_SETUP_REQUIRED"});
  const {purpose,priceCents,currency="BRL",territory="BR",durationDays=365,exclusive=false,terms}=req.body||{};
