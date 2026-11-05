@@ -9,7 +9,7 @@ import { authRequired,adminRequired,signToken,optionalAuth } from "./auth.js";
 import { saveElevenLabsKey,getElevenLabsKeyStatus,removeElevenLabsKey } from "./user-keys.js";
 import assistantRouter from "./assistant.js";
 import { wooviRouter, wooviWebhookRouter } from "./woovi-routes.js";
-import { sicoobPublisherRouter, sicoobPublisherWebhookRouter } from "./sicoob-publisher-routes.js";
+import { sicoobPublisherRouter, sicoobPublisherWebhookRouter, reconcileSicoobReceipts } from "./sicoob-publisher-routes.js";
 
 const app=express();
 app.use(helmet());
@@ -81,7 +81,7 @@ app.get("/api/v1/content",asyncRoute(async(req,res)=>{
  res.json({items:r.rows});
 }));
 app.post("/api/v1/content",authRequired,asyncRoute(async(req,res)=>{
- const paymentSetup=await query(`SELECT 1 WHERE EXISTS(SELECT 1 FROM publisher_pix_accounts WHERE user_id=$1 AND active=true)
+ const paymentSetup=await query(`SELECT 1 WHERE EXISTS(SELECT 1 FROM publisher_sicoob_accounts WHERE user_id=$1 AND active=true)
  OR EXISTS(SELECT 1 FROM user_woovi_accounts WHERE user_id=$1 AND consented_at IS NOT NULL AND payout_permission_status='verified' AND payout_permission_verified_at IS NOT NULL)`,[req.user.sub]);
  if(!paymentSetup.rowCount)return res.status(403).json({error:"Cadastre uma chave Pix Sicoob ou conclua a autorização de recebimentos existente.",code:"PIX_RECEIVER_SETUP_REQUIRED"});
  const {contentType,title,summary="",canonicalUrl="",assetUrl="",sourceName="",authorName="",rightsEvidenceUrl="",rightsDeclaration}=req.body||{};
@@ -101,7 +101,7 @@ app.post("/api/v1/content/:id/offers",authRequired,asyncRoute(async(req,res)=>{
  res.status(201).json({offer:r.rows[0]});
 }));
 app.get("/api/v1/offers",asyncRoute(async(req,res)=>{
- const r=await query("SELECT o.*,c.title,c.content_type,c.summary,c.asset_url FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.active=true AND c.status='approved' AND (EXISTS(SELECT 1 FROM publisher_pix_accounts pa WHERE pa.user_id=o.owner_user_id AND pa.active=true) OR EXISTS(SELECT 1 FROM user_woovi_accounts wa WHERE wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL)) ORDER BY o.created_at DESC LIMIT 100");
+ const r=await query("SELECT o.*,c.title,c.content_type,c.summary,c.asset_url FROM license_offers o JOIN content_items c ON c.id=o.content_id WHERE o.active=true AND c.status='approved' AND (EXISTS(SELECT 1 FROM publisher_sicoob_accounts pa WHERE pa.user_id=o.owner_user_id AND pa.active=true) OR EXISTS(SELECT 1 FROM user_woovi_accounts wa WHERE wa.user_id=o.owner_user_id AND wa.consented_at IS NOT NULL AND wa.payout_permission_status='verified' AND wa.payout_permission_verified_at IS NOT NULL)) ORDER BY o.created_at DESC LIMIT 100");
  res.json({offers:r.rows});
 }));
 app.post("/api/v1/licenses/request",authRequired,asyncRoute(async(req,res)=>{
@@ -180,4 +180,4 @@ app.post("/api/v1/developer/api-keys",authRequired,asyncRoute(async(req,res)=>{
 }));
 app.use((err,req,res,next)=>{console.error(err);const status=Number.isInteger(err?.status)&&err.status>=400&&err.status<600?err.status:500;res.status(status).json({error:status===500?"Erro interno do servidor":err.message||"Solicitação inválida"});});
 const port=process.env.PORT||4000;
-app.listen(port,"0.0.0.0",()=>console.log("Licença News API ouvindo na porta "+port));
+app.listen(port,"0.0.0.0",()=>{console.log("Licença News API ouvindo na porta "+port);setTimeout(()=>reconcileSicoobReceipts().catch(console.error),15000);setInterval(()=>reconcileSicoobReceipts().catch(console.error),60000);});
