@@ -58,7 +58,7 @@ router.get("/orders/:id/charge",authRequired,asyncRoute(async(req,res)=>{
  const charge=await sicoobRequest("get","/cob/"+encodeURIComponent(r.rows[0].sicoob_txid));
  res.json({payment:charge});
 }));
-webhooks.post("/sicoob/:token",asyncRoute(async(req,res)=>{
+webhooks.post("/:token",asyncRoute(async(req,res)=>{
  const expected=Buffer.from(process.env.SICOOB_WEBHOOK_TOKEN||""),supplied=Buffer.from(String(req.params.token||""));
  if(!expected.length||expected.length!==supplied.length||!timingSafeEqual(expected,supplied))return res.status(401).json({error:"Webhook não autorizado."});
  const pixList=Array.isArray(req.body?.pix)?req.body.pix:[];
