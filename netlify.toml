@@ -7,7 +7,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://licenca-news-api.onrender.com/api/:splat"
+  to = "https://licen-a-news.onrender.com/api/:splat"
   status = 200
   force = true
 
