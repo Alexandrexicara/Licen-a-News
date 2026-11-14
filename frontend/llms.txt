@@ -1,0 +1,30 @@
+# Licença News
+
+> Marketplace para descoberta e licenciamento de artigos, fotografias, vídeos e conteúdos de jornalistas, veículos e criadores.
+
+## Site
+- https://licenca-news.netlify.app/
+
+## Servidor MCP
+- Endpoint Streamable HTTP: https://licenca-news.netlify.app/.netlify/functions/mcp
+- Ferramentas públicas e somente leitura:
+  - licenca_news_status
+  - licenca_news_search
+  - licenca_news_how_it_works
+- A busca usa termos e sinônimos em português, inglês e espanhol.
+- O MCP não executa pagamentos nem emite automaticamente uma licença.
+
+## Serviços
+- Descoberta de conteúdos disponíveis para licenciamento.
+- Pesquisa de artigos, fotografias, vídeos e áudio.
+- Informações sobre ofertas por finalidade, território, prazo e exclusividade.
+- Orientação sobre o fluxo de solicitação e verificação de licenças.
+
+## Público
+Jornalistas, jornais, editoras, influenciadores, empresas, veículos de comunicação e plataformas de IA que precisam licenciar conteúdo.
+
+## Termos de busca
+licenciamento de conteúdo, licença de artigos, licenciar fotografias, licenciar vídeos, conteúdo jornalístico, direitos autorais, licenciamento de mídia, banco de conteúdo, conteúdo para empresas, content licensing, news licensing, photo licensing, video licensing, AI content licensing.
+
+## Aviso
+A plataforma não recebe pagamentos nesta etapa. A negociação e qualquer pagamento são feitos diretamente entre titular e comprador. A solicitação não representa licença concedida.
